@@ -141,6 +141,7 @@ class AudioIngestServer extends EventEmitter {
       if (this.active) { try { this.active.destroy(); } catch (_) { /* ignore */ } }
       this.active = socket;
       this.emit('log', 'audio producer connected');
+      this.emit('stream-start'); // consumers must reset PCM alignment state
       socket.on('data', (chunk) => this.emit('pcm', chunk));
       const end = () => { if (this.active === socket) { this.active = null; } };
       socket.on('close', end);
@@ -326,6 +327,7 @@ class EngineController extends EventEmitter {
     // "connection request from iPhone (iPhone18,2) with deviceID = ..."
     const req = line.match(/connection request from (\S+)/i);
     if (req) {
+      this.restarts = 0; // healthy session — reset the crash-loop budget
       this.emit('client-connected', { name: req[1], raw: line });
     } else if (/accepted.*client|client connected|start(ing)? mirroring/.test(l)) {
       this.emit('client-connected', { raw: line });
@@ -339,9 +341,14 @@ class EngineController extends EventEmitter {
   stop() {
     this.stopped = true;
     if (this.proc) {
-      try { this.proc.kill('SIGTERM'); } catch (_) { /* ignore */ }
-      // hard kill after grace period
       const p = this.proc;
+      // Detach the auto-restart close handler: if this proc's 'close' lands
+      // after a manual start() resets `stopped`, it would spawn a SECOND
+      // engine alongside the new one.
+      p.removeAllListeners('close');
+      p.on('close', () => {}); // still reap it
+      try { p.kill('SIGTERM'); } catch (_) { /* ignore */ }
+      // hard kill after grace period
       setTimeout(() => { try { p.kill('SIGKILL'); } catch (_) { /* ignore */ } }, 1200);
       this.proc = null;
     }

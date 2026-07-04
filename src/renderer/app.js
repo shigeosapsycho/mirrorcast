@@ -100,6 +100,7 @@ const STATE_LABEL = {
   waiting: 'Waiting…',
   pairing: 'Connecting…',
   connected: 'Connected',
+  'engine-missing': 'No engine',
   error: 'Error',
 };
 
@@ -243,7 +244,9 @@ window.addEventListener('keyup', (e) => { if (e.key === 'Alt') e.preventDefault(
 let nameTimer = null;
 el.nameInput.addEventListener('input', () => {
   clearTimeout(nameTimer);
-  nameTimer = setTimeout(() => api.setName(el.nameInput.value), 400);
+  // Long debounce: applying a rename restarts the engine, so wait until the
+  // user has clearly stopped typing.
+  nameTimer = setTimeout(() => api.setName(el.nameInput.value), 900);
 });
 
 // ---- Video settings (FPS / quality segmented controls) ---------------------

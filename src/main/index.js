@@ -242,6 +242,9 @@ function startServices() {
   // renderer's Int16Array never gets an odd length and channels stay in sync.
   const FRAME_BYTES = AUDIO_CHANNELS * 2;
   let pcmLeftover = Buffer.alloc(0);
+  // A stale partial frame from a previous producer would misalign every
+  // sample after it (permanent static) — reset on each new audio stream.
+  audioIngest.on('stream-start', () => { pcmLeftover = Buffer.alloc(0); });
   audioIngest.on('pcm', (chunk) => {
     if (!config.audioEnabled) { pcmLeftover = Buffer.alloc(0); return; }
     const buf = Buffer.concat([pcmLeftover, chunk]);
@@ -364,9 +367,18 @@ function registerIpc() {
 
   ipcMain.on(IPC.SET_NAME, (_e, name) => {
     name = String(name || '').trim().slice(0, 40) || config.name;
+    if (name === config.name) return;
     config.name = name;
     config.save();
     if (mdns) mdns.rename(name);
+    // The engine advertises its own mDNS name (-n) — restart it so the new
+    // name actually shows up on the iPhone.
+    if (engine) {
+      engine.name = name;
+      engine.restarts = 0;
+      engine.stop();
+      setTimeout(() => { if (engine) engine.start(); }, 600);
+    }
     pushState(currentState);
     log(`receiver renamed to "${name}"`);
   });
@@ -418,8 +430,12 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('window-all-closed', () => {
-    stopServices();
-    if (process.platform !== 'darwin') app.quit();
+    // macOS: app stays alive with the window closed — keep services running
+    // so the receiver still works and `activate` gets a live app back.
+    if (process.platform !== 'darwin') {
+      stopServices();
+      app.quit();
+    }
   });
 
   app.on('before-quit', stopServices);

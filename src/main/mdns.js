@@ -217,9 +217,16 @@ class MdnsAdvertiser extends EventEmitter {
 
   /** Update the advertised name live (e.g. user renamed in settings). */
   rename(name) {
+    if (this.mdns) {
+      // Goodbye the OLD instance records (ttl 0) so devices drop the stale
+      // name promptly, then announce under the new name.
+      try {
+        const bye = this._answers().map((a) => ({ ...a, ttl: 0 }));
+        this.mdns.respond({ answers: bye });
+      } catch (_) { /* ignore */ }
+    }
     this.cfg.name = name;
     if (this.mdns) {
-      // Goodbye old records (ttl 0) then re-announce fresh.
       this.announce();
       this.emit('log', `mDNS renamed to "${name}"`);
     }
