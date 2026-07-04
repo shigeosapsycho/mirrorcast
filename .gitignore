@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+release/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.local
+
+# Bundled engine binaries — never commit (see resources/engine/README.md)
+resources/engine/*
+!resources/engine/README.md
+
+# Local tool caches
+.impeccable/

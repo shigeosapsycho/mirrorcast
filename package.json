@@ -1,0 +1,32 @@
+{
+  "name": "mirrorcast",
+  "version": "0.1.0",
+  "description": "Free AirPlay 2 screen-mirroring receiver for Windows and macOS. Your iPhone sees it in Control Center automatically.",
+  "main": "src/main/index.js",
+  "author": "MirrorCast",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "icon": "node scripts/generate-icon.js",
+    "stream-test": "node scripts/stream-test.js",
+    "engine:check": "node scripts/setup-engine.js",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "postinstall": "node scripts/generate-icon.js || echo \"icon generation skipped\""
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "ffmpeg-static": "^5.2.0",
+    "multicast-dns": "^7.2.5"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "^25.0.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

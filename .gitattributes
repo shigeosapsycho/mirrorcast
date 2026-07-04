@@ -1,0 +1,10 @@
+# Normalize line endings across platforms.
+* text=auto eol=lf
+
+# Shell scripts must be LF to run under bash/MSYS2.
+*.sh text eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.ico binary
+*.icns binary

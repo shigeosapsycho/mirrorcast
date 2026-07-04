@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>MirrorCast</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Auto-update banner -->
+    <div id="update-banner" class="update-banner hidden">
+      <span id="update-text">A new version is available…</span>
+      <button id="update-btn" class="update-btn hidden">Restart &amp; update</button>
+    </div>
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">MirrorCast</span>
+      </div>
+      <button id="gear" class="gear" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="currentColor" d="M19.14 12.94a7.6 7.6 0 0 0 .05-.94 7.6 7.6 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.62l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.24-1.12.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.76 8.86a.5.5 0 0 0 .12.62l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32c.14.24.42.32.66.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.58-.24 1.12-.56 1.62-.94l2.39.96c.24.1.52.02.66-.22l1.92-3.32a.5.5 0 0 0-.12-.62l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Stage: mirrored screen / waiting state -->
+    <main class="stage">
+      <div id="phone-frame" class="phone-frame">
+        <canvas id="screen" class="screen" width="1080" height="2340"></canvas>
+
+        <!-- Waiting overlay -->
+        <div id="waiting" class="waiting">
+          <div class="pulse">
+            <span class="pulse-ring"></span>
+            <span class="pulse-ring delay"></span>
+            <span class="pulse-core">
+              <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+                <path fill="currentColor" d="M3 6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-6v2h2a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h2v-2H4a1 1 0 0 1-1-1V6Z"/>
+              </svg>
+            </span>
+          </div>
+          <p class="waiting-title">Waiting for your iPhone…</p>
+          <p class="waiting-steps">
+            Open <b>Control Center</b> →
+            <b>Screen Mirroring</b> →
+            tap <b id="waiting-name">MirrorCast</b>
+          </p>
+        </div>
+
+        <!-- Engine-setup overlay (informational) -->
+        <div id="engine-overlay" class="engine-overlay hidden">
+          <div class="engine-icon">
+            <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+              <path fill="currentColor" d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/>
+            </svg>
+          </div>
+          <p class="engine-title">Mirroring engine needed</p>
+          <p class="engine-body" id="engine-body">
+            MirrorCast uses an external FairPlay engine to decode video.
+          </p>
+          <a class="engine-cta" id="engine-cta" href="#">How to install →</a>
+        </div>
+
+        <!-- Error / firewall overlay -->
+        <div id="error-overlay" class="error-overlay hidden">
+          <div class="error-icon">⚠️</div>
+          <p class="error-title" id="error-title">Something went wrong</p>
+          <p class="error-body" id="error-body"></p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Status bar -->
+    <footer id="statusbar" class="statusbar">
+      <span class="sb-item sb-engine" id="sb-engine" title="Mirroring engine">⚙︎ —</span>
+      <span class="sb-sep">·</span>
+      <span class="sb-item sb-name" id="sb-name">MirrorCast</span>
+      <span class="sb-sep">·</span>
+      <span class="sb-item sb-state" id="sb-state">
+        <span class="sb-led" id="sb-led"></span>
+        <span id="sb-state-text">Starting…</span>
+      </span>
+      <span class="sb-sep">·</span>
+      <span class="sb-item sb-res" id="sb-res">—</span>
+      <span class="sb-sep">·</span>
+      <span class="sb-item sb-fps" id="sb-fps">— fps</span>
+      <button id="mute" class="mute" title="Mute audio" aria-label="Mute audio">
+        <svg id="mute-on" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M4 9v6h4l5 5V4L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 16.5 12Z"/>
+        </svg>
+        <svg id="mute-off" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="hidden">
+          <path fill="currentColor" d="M4 9v6h4l5 5V4L8 9H4Zm15.5 3-2.3-2.3-1.4 1.4L18 12l-2.2 2.2 1.4 1.4 2.3-2.3 2.3 2.3 1.4-1.4L21 12l2.2-2.2-1.4-1.4-2.3 2.3Z"/>
+        </svg>
+      </button>
+    </footer>
+
+    <!-- Settings slide-in -->
+    <div id="scrim" class="scrim hidden"></div>
+    <aside id="settings" class="settings" aria-hidden="true">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button id="settings-close" class="settings-close" aria-label="Close">✕</button>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Receiver name</span>
+        <input id="name-input" class="text-input" type="text" maxlength="40"
+               placeholder="MirrorCast" />
+        <span class="field-hint">Shown on your iPhone's Screen Mirroring list.</span>
+      </label>
+
+      <div class="field toggle-field">
+        <div>
+          <span class="field-label">Audio</span>
+          <span class="field-hint">Play mirrored audio through this computer.</span>
+        </div>
+        <label class="switch">
+          <input id="audio-toggle" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="field toggle-field">
+        <div>
+          <span class="field-label">Always on top</span>
+          <span class="field-hint">Keep the window above other apps.</span>
+        </div>
+        <label class="switch">
+          <input id="aot-toggle" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-foot">
+        <span class="dev-id" id="dev-id">device —</span>
+      </div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
