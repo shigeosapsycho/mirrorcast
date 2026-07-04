@@ -41,6 +41,14 @@ const el = {
   muteOn: document.getElementById('mute-on'),
   muteOff: document.getElementById('mute-off'),
   volSlider: document.getElementById('vol-slider'),
+
+  shot: document.getElementById('shot'),
+  rec: document.getElementById('rec'),
+  recTime: document.getElementById('rec-time'),
+  toast: document.getElementById('toast'),
+  pinLine: document.getElementById('pin-line'),
+  pinCode: document.getElementById('pin-code'),
+  pinToggle: document.getElementById('pin-toggle'),
 };
 
 const ctx = el.canvas.getContext('2d', { alpha: false });
@@ -141,6 +149,7 @@ api.onStatus((s) => {
   if (state !== 'connected' && state !== 'pairing') {
     el.frame.classList.remove('streaming'); // clear stale mirror view
     el.sbRes.textContent = '—';
+    stopRecording(); // stream is gone — finalize the file
   }
   lastState = state;
   updateOverlays();
@@ -156,6 +165,10 @@ function updateOverlays() {
   el.errorOverlay.classList.toggle('hidden', !showError);
   el.engineOverlay.classList.toggle('hidden', !showEngine);
   el.waiting.classList.toggle('hidden', streaming || showError || showEngine);
+  // Capture only makes sense with live frames; keep Record clickable while a
+  // recording is finalizing so Stop always works.
+  el.shot.disabled = !streaming;
+  el.rec.disabled = !streaming && !recorder;
 }
 
 // ---- Engine status --------------------------------------------------------
@@ -237,7 +250,18 @@ function closeSettings() {
 el.gear.addEventListener('click', openSettings);
 el.settingsClose.addEventListener('click', closeSettings);
 el.scrim.addEventListener('click', closeSettings);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (el.settings.classList.contains('open')) closeSettings();
+    else if (isFullscreen) api.setFullscreen(false);
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    takeScreenshot();
+  } else if (e.key === 'F11') {
+    e.preventDefault();
+    api.setFullscreen(null); // toggle
+  }
+});
 
 // ---- Theme toggle -----------------------------------------------------------
 const themeBtn = document.getElementById('theme-btn');
@@ -342,6 +366,16 @@ el.audioToggle.addEventListener('change', () => {
   api.setAudio(!muted && volume > 0);
 });
 el.aotToggle.addEventListener('change', () => api.setAlwaysOnTop(el.aotToggle.checked));
+el.pinToggle.addEventListener('change', () => api.setRequirePin(el.pinToggle.checked));
+
+// ---- Pairing PIN ------------------------------------------------------------
+// Main relays the engine's per-session code; visible inside the waiting overlay
+// (auto-hidden once frames stream).
+api.onPin((p) => {
+  const pin = p && p.pin;
+  el.pinLine.classList.toggle('hidden', !pin);
+  el.pinCode.textContent = pin || '····';
+});
 
 // ---- Volume + mute --------------------------------------------------------
 let muted = false;
@@ -403,6 +437,170 @@ api.onAudio(({ sampleRate, channels, pcm }) => {
   a.playHead += buffer.duration;
 });
 
+// ---- Toast ------------------------------------------------------------------
+let toastTimer = null;
+let toastClick = null;
+
+function showToast(text, onClick) {
+  el.toast.textContent = text;
+  toastClick = onClick || null;
+  el.toast.classList.toggle('clickable', !!onClick);
+  el.toast.classList.remove('hidden');
+  requestAnimationFrame(() => el.toast.classList.add('show'));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 5000);
+}
+function hideToast() {
+  el.toast.classList.remove('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.toast.classList.add('hidden'), 300);
+}
+el.toast.addEventListener('click', () => {
+  if (toastClick) toastClick();
+  hideToast();
+});
+
+// ---- Screenshot ---------------------------------------------------------------
+let shotBusy = false;
+
+async function takeScreenshot() {
+  if (el.shot.disabled || shotBusy) return;
+  shotBusy = true;
+  try {
+    const blob = await new Promise((resolve) => el.canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('canvas capture failed');
+    const res = await api.saveScreenshot(await blob.arrayBuffer());
+    if (res && res.path) {
+      showToast('Screenshot saved — click to open folder', () => api.showInFolder(res.path));
+    } else {
+      throw new Error((res && res.error) || 'save failed');
+    }
+  } catch (err) {
+    showToast(`Screenshot failed: ${err.message}`);
+  }
+  shotBusy = false;
+}
+el.shot.addEventListener('click', takeScreenshot);
+
+// ---- Screen recording ---------------------------------------------------------
+// MediaRecorder over the canvas stream (+ a Web Audio tap when audio is live).
+// Chunks stream to main, which writes Videos/MirrorCast and remuxes
+// H.264-in-WebM to .mp4. Prefer H.264 mimetypes: stream-copy remux, and VP9
+// software encode can't keep up at 60 fps phone resolutions.
+let recorder = null;
+let recChain = Promise.resolve(); // serializes chunk arrayBuffer() -> IPC order
+let recTimer = null;
+let recAudioTap = null;
+let recStartedAt = 0;
+
+function pickRecFormat() {
+  const candidates = [
+    ['video/mp4;codecs="avc1.42E01E,mp4a.40.2"', 'mp4'],
+    ['video/mp4', 'mp4'],
+    ['video/webm;codecs=h264,opus', 'webm-h264'],
+    ['video/webm;codecs=vp9,opus', 'webm-vp9'],
+    ['video/webm', 'webm-vp9'],
+  ];
+  for (const [mime, container] of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(mime)) return { mime, container };
+  }
+  return null;
+}
+
+async function startRecording() {
+  if (recorder || el.rec.disabled) return;
+  const fmt = pickRecFormat();
+  if (!fmt) { showToast('Recording is not supported on this system'); return; }
+
+  const stream = el.canvas.captureStream(); // frames captured as they paint
+  if (audio) {
+    recAudioTap = audio.ctx.createMediaStreamDestination();
+    audio.gain.connect(recAudioTap); // post-volume mix, same as the speakers
+    for (const t of recAudioTap.stream.getAudioTracks()) stream.addTrack(t);
+  }
+
+  const res = await api.recStart({ container: fmt.container });
+  if (res && res.error) {
+    showToast(`Recording failed: ${res.error}`);
+    cleanupAudioTap();
+    return;
+  }
+
+  recorder = new MediaRecorder(stream, { mimeType: fmt.mime, videoBitsPerSecond: 12e6 });
+  recChain = Promise.resolve();
+  recorder.ondataavailable = (e) => {
+    if (!e.data || !e.data.size) return;
+    recChain = recChain.then(async () => { api.recChunk(await e.data.arrayBuffer()); });
+  };
+  recorder.onstop = finishRecording;
+  recorder.start(1000); // 1s chunks
+
+  recStartedAt = performance.now();
+  el.rec.classList.add('rec-on');
+  el.rec.title = 'Stop recording';
+  el.recTime.textContent = '0:00';
+  el.recTime.classList.remove('hidden');
+  recTimer = setInterval(() => {
+    const s = Math.floor((performance.now() - recStartedAt) / 1000);
+    el.recTime.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }, 500);
+}
+
+function cleanupAudioTap() {
+  if (recAudioTap && audio) {
+    try { audio.gain.disconnect(recAudioTap); } catch (_) { /* ctx may be gone */ }
+  }
+  recAudioTap = null;
+}
+
+async function finishRecording() {
+  const rec = recorder;
+  recorder = null;
+  clearInterval(recTimer);
+  el.rec.classList.remove('rec-on');
+  el.rec.title = 'Record';
+  el.recTime.classList.add('hidden');
+  cleanupAudioTap();
+  if (rec) for (const t of rec.stream.getTracks()) t.stop();
+  updateOverlays(); // refresh button enablement
+
+  await recChain; // every chunk is in main's write stream before we finalize
+  const res = await api.recStop();
+  if (res && res.path) {
+    showToast('Recording saved — click to open folder', () => api.showInFolder(res.path));
+  } else if (res && res.error && res.error !== 'not recording') {
+    showToast(`Recording failed: ${res.error}`);
+  }
+}
+
+function stopRecording() {
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+}
+
+el.rec.addEventListener('click', () => (recorder ? stopRecording() : startRecording()));
+
+// ---- Fullscreen -----------------------------------------------------------------
+// Double-click the mirror (or F11) to fill the window; Esc exits. Chrome (status
+// bar + gear) hides and slides back while the mouse moves.
+let isFullscreen = false;
+let chromeTimer = null;
+
+api.onFullscreen((fs) => {
+  isFullscreen = !!fs;
+  document.body.classList.toggle('fullscreen', isFullscreen);
+  document.body.classList.remove('chrome');
+  clearTimeout(chromeTimer);
+});
+
+el.frame.addEventListener('dblclick', () => api.setFullscreen(null));
+
+window.addEventListener('mousemove', () => {
+  if (!isFullscreen) return;
+  document.body.classList.add('chrome');
+  clearTimeout(chromeTimer);
+  chromeTimer = setTimeout(() => document.body.classList.remove('chrome'), 2500);
+});
+
 // ---- Boot -----------------------------------------------------------------
 (async function boot() {
   try {
@@ -412,6 +610,7 @@ api.onAudio(({ sampleRate, channels, pcm }) => {
     el.aotToggle.checked = !!cfg.alwaysOnTop;
     el.appVersion.textContent = `MirrorCast v${cfg.version || '1.0.0'}`;
     applyTheme(cfg.theme || 'dark');
+    el.pinToggle.checked = !!cfg.requirePin;
     selFps = cfg.videoFps || 60;
     selQuality = cfg.videoQuality || 75;
     setSegActive(fpsSeg, 'fps', selFps);

@@ -10,7 +10,7 @@
  *  - marshal state/frames/logs to the renderer over IPC
  */
 
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -20,6 +20,7 @@ const { MdnsAdvertiser } = require('./mdns');
 const { AirPlayReceiver } = require('./airplay');
 const { Decoder } = require('./decoder');
 const { VideoIngestServer, AudioIngestServer, EngineController } = require('./engine');
+const { saveScreenshot, RecordingSink } = require('./capture');
 const { initUpdater } = require('./updater');
 const { IPC, STATE, ENGINE_MODE, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS } = require('../shared/constants');
 
@@ -37,6 +38,8 @@ let updater = null;
 let lastUpdateStatus = { state: 'idle' };
 let currentState = STATE.STARTING;
 let engineStatus = { mode: null, installed: false, engine: null, message: '' };
+let lastPin = null;                      // current engine pairing PIN (or null)
+const recording = new RecordingSink();   // MediaRecorder chunks -> Videos/MirrorCast
 
 // ---------------------------------------------------------------------------
 // Persistent config (identity + user settings)
@@ -64,6 +67,7 @@ function loadConfig() {
   if (!stored.name) { stored.name = os.hostname().split('.')[0] || 'MirrorCast'; changed = true; }
   if (stored.audioEnabled == null) { stored.audioEnabled = true; changed = true; }
   if (stored.alwaysOnTop == null) { stored.alwaysOnTop = false; changed = true; }
+  if (stored.requirePin == null) { stored.requirePin = false; changed = true; }
   // Engine selection. 'auto' uses an external FairPlay engine if one is found,
   // else falls back to built-in discovery. engineCommand/enginePath override.
   if (!stored.engineMode) { stored.engineMode = ENGINE_MODE.AUTO; changed = true; }
@@ -103,6 +107,7 @@ function saveConfig(cfg) {
     name: cfg.name,
     audioEnabled: cfg.audioEnabled,
     alwaysOnTop: cfg.alwaysOnTop,
+    requirePin: cfg.requirePin,
     engineMode: cfg.engineMode,
     engineCommand: cfg.engineCommand,
     enginePath: cfg.enginePath,
@@ -138,11 +143,17 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // Keep rAF + timers alive when the window is occluded/minimized: the
+      // canvas paint loop feeds MediaRecorder, so recording must not freeze
+      // just because another window covers MirrorCast.
+      backgroundThrottling: false,
     },
   });
 
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   if (isDev) win.webContents.openDevTools({ mode: 'detach' });
+  win.on('enter-full-screen', () => send(IPC.FULLSCREEN_CHANGED, true));
+  win.on('leave-full-screen', () => send(IPC.FULLSCREEN_CHANGED, false));
   win.on('closed', () => { win = null; });
 }
 
@@ -284,6 +295,7 @@ function startServices() {
     enginePath: config.enginePath,
     fps: config.videoFps,
     quality: config.videoQuality,
+    requirePin: config.requirePin,
     resourcesDir: process.resourcesPath,
   });
   engine.on('log', log);
@@ -304,6 +316,10 @@ function startServices() {
     frameCount = 0;
     pushState(STATE.WAITING);
   });
+  engine.on('pin', ({ pin }) => {
+    lastPin = pin;
+    send(IPC.PIN_CODE, { pin });
+  });
   engine.on('resolution', ({ width, height }) => pushState(currentState, { width, height }));
   engine.on('crashed', () => pushState(STATE.ERROR, { reason: 'Mirroring engine stopped unexpectedly' }));
   engine.on('missing', () => {
@@ -318,6 +334,8 @@ function startServices() {
 }
 
 function stopServices() {
+  // Finalize an in-flight recording so the file on disk is playable.
+  if (recording.active) recording.stop().catch(() => {});
   if (engine) engine.stop();
   if (ingest) ingest.stop();
   if (audioIngest) audioIngest.stop();
@@ -331,11 +349,21 @@ function stopServices() {
 // IPC handlers
 // ---------------------------------------------------------------------------
 
+/** Stop + relaunch the engine so changed settings (name/fps/pin) take effect. */
+function restartEngine() {
+  if (!engine) return;
+  engine.restarts = 0;
+  engine.stop();
+  setTimeout(() => { if (engine) engine.start(); }, 600);
+}
+
 function registerIpc() {
   ipcMain.on(IPC.UI_READY, () => {
     pushState(currentState);
     sendEngineStatus();
     send(IPC.UPDATE_STATUS, lastUpdateStatus);
+    send(IPC.PIN_CODE, { pin: lastPin });
+    send(IPC.FULLSCREEN_CHANGED, !!(win && win.isFullScreen()));
   });
 
   ipcMain.on(IPC.UPDATE_INSTALL, () => { if (updater) updater.install(); });
@@ -346,6 +374,7 @@ function registerIpc() {
     deviceId: config.deviceId,
     audioEnabled: config.audioEnabled,
     alwaysOnTop: config.alwaysOnTop,
+    requirePin: config.requirePin,
     engineMode: config.engineMode,
     videoFps: config.videoFps,
     videoQuality: config.videoQuality,
@@ -368,10 +397,8 @@ function registerIpc() {
     if (engine) {
       engine.fps = fps;
       engine.quality = quality;
-      engine.restarts = 0;
-      engine.stop();
-      setTimeout(() => { if (engine) engine.start(); }, 600);
     }
+    restartEngine();
   });
 
   ipcMain.on(IPC.SET_NAME, (_e, name) => {
@@ -382,12 +409,8 @@ function registerIpc() {
     if (mdns) mdns.rename(name);
     // The engine advertises its own mDNS name (-n) — restart it so the new
     // name actually shows up on the iPhone.
-    if (engine) {
-      engine.name = name;
-      engine.restarts = 0;
-      engine.stop();
-      setTimeout(() => { if (engine) engine.start(); }, 600);
-    }
+    if (engine) engine.name = name;
+    restartEngine();
     pushState(currentState);
     log(`receiver renamed to "${name}"`);
   });
@@ -402,6 +425,69 @@ function registerIpc() {
     config.alwaysOnTop = !!on;
     config.save();
     if (win) win.setAlwaysOnTop(!!on);
+  });
+
+  ipcMain.on(IPC.SET_REQUIRE_PIN, (_e, on) => {
+    on = !!on;
+    if (on === config.requirePin) return;
+    config.requirePin = on;
+    config.save();
+    log(`client PIN ${on ? 'required' : 'not required'} — restarting engine`);
+    if (engine) {
+      engine.requirePin = on;
+      restartEngine(); // engine emits 'pin' with the new code (or null) on start
+    } else {
+      lastPin = null;
+      send(IPC.PIN_CODE, { pin: null });
+    }
+  });
+
+  ipcMain.on(IPC.SET_FULLSCREEN, (_e, v) => {
+    if (!win) return;
+    win.setFullScreen(typeof v === 'boolean' ? v : !win.isFullScreen());
+  });
+
+  // ---- capture: screenshot + recording ------------------------------------
+
+  ipcMain.handle(IPC.SCREENSHOT_SAVE, async (_e, png) => {
+    try {
+      const file = await saveScreenshot(app.getPath('pictures'), Buffer.from(png));
+      log(`screenshot saved: ${file}`);
+      return { path: file };
+    } catch (e) {
+      return { error: e.message };
+    }
+  });
+
+  ipcMain.on(IPC.SHOW_IN_FOLDER, (_e, p) => {
+    // Only reveal paths we handed out (a plain existence check keeps the
+    // renderer from probing arbitrary strings into the shell).
+    if (typeof p === 'string' && fs.existsSync(p)) shell.showItemInFolder(p);
+  });
+
+  ipcMain.handle(IPC.RECORDING_START, async (_e, opts) => {
+    try {
+      const container = (opts && opts.container) || 'webm-vp9';
+      const file = await recording.start(app.getPath('videos'), container);
+      log(`recording started: ${file}`);
+      return {};
+    } catch (e) {
+      return { error: e.message };
+    }
+  });
+
+  ipcMain.on(IPC.RECORDING_CHUNK, (_e, buf) => {
+    recording.write(Buffer.from(buf));
+  });
+
+  ipcMain.handle(IPC.RECORDING_STOP, async () => {
+    try {
+      const res = await recording.stop();
+      if (res.path) log(`recording saved: ${res.path}`);
+      return res;
+    } catch (e) {
+      return { error: e.message };
+    }
   });
 }
 

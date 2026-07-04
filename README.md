@@ -123,8 +123,23 @@ Open the gear (top-right) to slide in settings:
   computer's hostname). Changes apply live.
 - **Audio** — play mirrored audio through this computer's default output.
 - **Always on top** — keep the MirrorCast window above other apps.
+- **Require PIN code** — iPhones must enter a 4-digit code (shown in the
+  MirrorCast window) before they can mirror. A fresh code is generated each
+  time the receiver starts.
 
 Mute is also one tap away in the status bar.
+
+## Capture & viewing 📸
+
+While a device is mirroring:
+
+- **Screenshot** — camera button in the status bar, or **Ctrl+S** (⌘S on Mac).
+  Saved as PNG to `Pictures/MirrorCast`.
+- **Screen recording** — record button in the status bar starts/stops; a timer
+  shows while recording. Saved as `.mp4` (with the mirrored audio) to
+  `Videos/MirrorCast`. Recording stops automatically if the stream ends.
+- **Fullscreen** — double-click the mirror or press **F11**; **Esc** exits.
+  The status bar slides in when you move the mouse.
 
 ---
 

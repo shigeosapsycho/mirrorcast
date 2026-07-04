@@ -98,6 +98,21 @@ const IPC = {
   // auto-update
   UPDATE_STATUS: 'update:status',       // main -> renderer { state, version, percent, message }
   UPDATE_INSTALL: 'update:install',     // renderer -> main (quit + install)
+
+  // capture: screenshot + recording (renderer canvas -> main -> disk)
+  SCREENSHOT_SAVE: 'capture:screenshot',    // invoke (PNG ArrayBuffer) -> { path } | { error }
+  SHOW_IN_FOLDER: 'capture:show-in-folder', // renderer -> main (reveal a saved file)
+  RECORDING_START: 'capture:rec-start',     // invoke { container } -> {} | { error }
+  RECORDING_CHUNK: 'capture:rec-chunk',     // renderer -> main (ArrayBuffer)
+  RECORDING_STOP: 'capture:rec-stop',       // invoke -> { path } | { error }
+
+  // window
+  SET_FULLSCREEN: 'window:set-fullscreen',  // renderer -> main (bool | null = toggle)
+  FULLSCREEN_CHANGED: 'window:fullscreen',  // main -> renderer (bool)
+
+  // client-access PIN (engine pairing gate)
+  SET_REQUIRE_PIN: 'settings:require-pin',  // renderer -> main (bool) — restarts engine
+  PIN_CODE: 'engine:pin',                   // main -> renderer { pin: string | null }
 };
 
 // Connection state machine values shared by main + renderer.

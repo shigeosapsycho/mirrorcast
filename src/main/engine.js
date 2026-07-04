@@ -26,6 +26,7 @@
 const net = require('net');
 const os = require('os');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const EventEmitter = require('events');
@@ -212,7 +213,7 @@ class EngineController extends EventEmitter {
    * @param {number} o.ingestPort
    * @param {string} o.resourcesDir where a bundled engine may live
    */
-  constructor({ name, command = null, enginePath = null, ingestPort = MIRROR_INGEST_PORT, audioPort = MIRROR_AUDIO_PORT, fps = 60, quality = 75, resourcesDir, dllDir = null }) {
+  constructor({ name, command = null, enginePath = null, ingestPort = MIRROR_INGEST_PORT, audioPort = MIRROR_AUDIO_PORT, fps = 60, quality = 75, requirePin = false, resourcesDir, dllDir = null }) {
     super();
     this.name = name;
     this.command = command;
@@ -221,6 +222,8 @@ class EngineController extends EventEmitter {
     this.audioPort = audioPort;
     this.fps = fps;
     this.quality = quality;
+    this.requirePin = requirePin;
+    this.currentPin = null;
     this.resourcesDir = resourcesDir;
     this.dllDir = dllDir; // extra dir to prepend to PATH (GStreamer runtime)
     this.proc = null;
@@ -289,6 +292,19 @@ class EngineController extends EventEmitter {
 
     const spawnArgs = template.slice(1).map(fill);
 
+    // Client-access PIN. We generate the 4-digit code ourselves and pass it as
+    // a fixed pin (`-pin NNNN`): UxPlay's own random pin is printed only as an
+    // ASCII-art banner, which cannot be parsed reliably. A fresh code is drawn
+    // on every engine (re)start, so it behaves like a per-session random pin.
+    // Appended outside the template so custom engineCommand configs keep
+    // working; engines without a -pin flag should leave requirePin off.
+    if (this.requirePin) {
+      this.currentPin = String(crypto.randomInt(1000, 10000));
+      spawnArgs.push('-pin', this.currentPin);
+    } else {
+      this.currentPin = null;
+    }
+
     // Ensure the engine's shared libraries (GStreamer on Windows/MSYS2) resolve.
     const dllDir = this.dllDir || gstreamerBinDir(exe);
     const env = dllDir
@@ -298,6 +314,7 @@ class EngineController extends EventEmitter {
 
     this.emit('log', `starting engine: ${exe} ${spawnArgs.join(' ')}`);
     this.emit('ready', { engine: path.basename(exe) });
+    this.emit('pin', { pin: this.currentPin });
 
     this.proc = spawn(exe, spawnArgs, { stdio: ['ignore', 'pipe', 'pipe'], env });
 
