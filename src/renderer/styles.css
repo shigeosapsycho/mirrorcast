@@ -87,9 +87,16 @@ html, body {
   color: var(--text-dim);
   cursor: pointer; padding: 8px; border-radius: 50%;
   display: grid; place-items: center;
-  opacity: 0.7;
+  /* dissolved by default — JS adds .visible when the pointer is near */
+  opacity: 0;
+  pointer-events: none;
   transition: color .18s var(--ease), background .18s var(--ease),
-              opacity .18s var(--ease), transform .3s var(--ease);
+              opacity .35s var(--ease), transform .3s var(--ease);
+}
+.gear.visible,
+.gear:focus-visible {
+  opacity: 0.85;
+  pointer-events: auto;
 }
 .gear:hover { color: var(--text); background: rgba(28,28,28,0.9); opacity: 1; }
 .gear:active { transform: rotate(40deg); }

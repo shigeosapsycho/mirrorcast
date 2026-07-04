@@ -258,6 +258,35 @@ themeBtn.addEventListener('click', () => {
   api.setTheme(theme);
 });
 
+// ---- Floating controls dissolve unless the pointer is near -----------------
+const floatBtns = [themeBtn, el.gear];
+const NEAR_PX = 110;
+let lastProximityTs = 0;
+
+function updateBtnProximity(mx, my) {
+  for (const btn of floatBtns) {
+    const r = btn.getBoundingClientRect();
+    const near = Math.hypot(mx - (r.x + r.width / 2), my - (r.y + r.height / 2)) < NEAR_PX;
+    btn.classList.toggle('visible', near || btn === document.activeElement);
+  }
+}
+
+// Timestamp throttle — NOT requestAnimationFrame: rAF pauses in occluded
+// windows, which would latch the throttle shut and kill proximity forever.
+window.addEventListener('mousemove', (e) => {
+  const now = performance.now();
+  if (now - lastProximityTs < 33) return;
+  lastProximityTs = now;
+  updateBtnProximity(e.clientX, e.clientY);
+});
+window.addEventListener('mouseout', (e) => {
+  if (!e.relatedTarget) floatBtns.forEach((b) => b.classList.remove('visible'));
+});
+
+// Boot grace: show both briefly so their position is discoverable.
+floatBtns.forEach((b) => b.classList.add('visible'));
+setTimeout(() => updateBtnProximity(-9999, -9999), 2600);
+
 // Swallow Alt so it never focuses a (removed) menu bar or steals key focus.
 window.addEventListener('keydown', (e) => { if (e.key === 'Alt') e.preventDefault(); });
 window.addEventListener('keyup', (e) => { if (e.key === 'Alt') e.preventDefault(); });
