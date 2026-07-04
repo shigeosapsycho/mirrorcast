@@ -180,8 +180,10 @@ function defaultCommand() {
     '{ENGINE}',
     '-n', '{NAME}',
     '-nh',
+    // UxPlay caps streaming at 30 fps unless raised; request up to {FPS}.
+    '-fps', '{FPS}',
     // Video: decoded frames -> MJPEG -> MirrorCast video ingest.
-    '-vs', 'jpegenc quality=75 ! tcpclientsink host=127.0.0.1 port={INGEST_PORT}',
+    '-vs', 'jpegenc quality={QUALITY} ! tcpclientsink host=127.0.0.1 port={INGEST_PORT}',
     // Audio: decoded PCM (S16LE) -> MirrorCast audio ingest (so the app's
     // volume slider controls it, instead of the engine hitting speakers direct).
     '-as', 'audioconvert ! audioresample ! audio/x-raw,format=S16LE,channels=2,rate=44100 ! queue ! tcpclientsink host=127.0.0.1 port={AUDIO_PORT}',
@@ -209,13 +211,15 @@ class EngineController extends EventEmitter {
    * @param {number} o.ingestPort
    * @param {string} o.resourcesDir where a bundled engine may live
    */
-  constructor({ name, command = null, enginePath = null, ingestPort = MIRROR_INGEST_PORT, audioPort = MIRROR_AUDIO_PORT, resourcesDir, dllDir = null }) {
+  constructor({ name, command = null, enginePath = null, ingestPort = MIRROR_INGEST_PORT, audioPort = MIRROR_AUDIO_PORT, fps = 60, quality = 75, resourcesDir, dllDir = null }) {
     super();
     this.name = name;
     this.command = command;
     this.enginePath = enginePath;
     this.ingestPort = ingestPort;
     this.audioPort = audioPort;
+    this.fps = fps;
+    this.quality = quality;
     this.resourcesDir = resourcesDir;
     this.dllDir = dllDir; // extra dir to prepend to PATH (GStreamer runtime)
     this.proc = null;
@@ -262,7 +266,9 @@ class EngineController extends EventEmitter {
     const fill = (t) => t
       .replace('{NAME}', this.name)
       .replace('{INGEST_PORT}', String(this.ingestPort))
-      .replace('{AUDIO_PORT}', String(this.audioPort));
+      .replace('{AUDIO_PORT}', String(this.audioPort))
+      .replace('{FPS}', String(this.fps))
+      .replace('{QUALITY}', String(this.quality));
 
     // Resolve the executable (template[0]). '{ENGINE}' → auto-detect via
     // locate(); otherwise treat it as a literal binary name or path.
@@ -317,9 +323,13 @@ class EngineController extends EventEmitter {
   _parse(line) {
     this.emit('log', `engine: ${line}`);
     const l = line.toLowerCase();
-    if (/accepted|connection request|client connected|got.*connection|start mirroring/.test(l)) {
+    // "connection request from iPhone (iPhone18,2) with deviceID = ..."
+    const req = line.match(/connection request from (\S+)/i);
+    if (req) {
+      this.emit('client-connected', { name: req[1], raw: line });
+    } else if (/accepted.*client|client connected|start(ing)? mirroring/.test(l)) {
       this.emit('client-connected', { raw: line });
-    } else if (/connection closed|teardown|client.*disconnect|stop mirroring/.test(l)) {
+    } else if (/connection closed|teardown|client.*disconnect|stop mirroring|no longer true/.test(l)) {
       this.emit('client-disconnected', { raw: line });
     }
     const m = line.match(/(\d{3,4})\s*[x×]\s*(\d{3,4})/);

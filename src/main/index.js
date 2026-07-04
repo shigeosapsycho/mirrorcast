@@ -10,7 +10,7 @@
  *  - marshal state/frames/logs to the renderer over IPC
  */
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -69,6 +69,9 @@ function loadConfig() {
   if (!stored.engineMode) { stored.engineMode = ENGINE_MODE.AUTO; changed = true; }
   if (stored.engineCommand === undefined) { stored.engineCommand = null; changed = true; }
   if (stored.enginePath === undefined) { stored.enginePath = null; changed = true; }
+  // Video settings. UxPlay defaults to a 30 fps cap; we default to 60.
+  if (!stored.videoFps) { stored.videoFps = 60; changed = true; }
+  if (!stored.videoQuality) { stored.videoQuality = 75; changed = true; }
 
   // ed25519 identity keypair — persisted as PEM so it stays stable.
   if (!stored.privateKeyPem) {
@@ -102,6 +105,8 @@ function saveConfig(cfg) {
     engineMode: cfg.engineMode,
     engineCommand: cfg.engineCommand,
     enginePath: cfg.enginePath,
+    videoFps: cfg.videoFps,
+    videoQuality: cfg.videoQuality,
     privateKeyPem: cfg.privateKeyPem,
     publicKeyPem: cfg.publicKeyPem,
   };
@@ -126,7 +131,6 @@ function createWindow() {
     title: 'MirrorCast',
     icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
     alwaysOnTop: config.alwaysOnTop,
-    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -209,9 +213,22 @@ function startServices() {
   ingest.on('error', (e) => log(`ingest error: ${e.message}`));
   // Ingest emits unified JPEG frames for BOTH paths: MJPEG passthrough (what
   // UxPlay sends) and H.264 decoded via ffmpeg. Forward them to the renderer.
+  //
+  // IMPORTANT: the ingest producer socket is UxPlay's tcpclientsink, which
+  // connects at ENGINE launch — not when an iPhone connects. So "producer
+  // connected" must NOT drive the Connected state (it caused a false
+  // "Connected" at idle). Connected = first real video frame; Connecting =
+  // engine log reports a client; Waiting = client gone.
   let frameCount = 0;
+  let clientName = 'iPhone';
   ingest.on('frame', (jpeg) => {
-    if (++frameCount === 1 || frameCount % 120 === 0) log(`video frames received: ${frameCount}`);
+    frameCount++;
+    if (frameCount === 1) {
+      log(`first video frame from ${clientName} — Connected`);
+      pushState(STATE.CONNECTED, { clientName });
+    } else if (frameCount % 300 === 0) {
+      log(`video frames received: ${frameCount}`);
+    }
     send(IPC.VIDEO_FRAME, jpeg.buffer.slice(jpeg.byteOffset, jpeg.byteOffset + jpeg.byteLength));
   });
   ingest.on('stream-start', () => { frameCount = 0; });
@@ -239,7 +256,6 @@ function startServices() {
     });
   });
   audioIngest.start();
-  ingest.on('stream-start', () => pushState(STATE.CONNECTED, { clientName: 'iPhone' }));
   ingest.on('stream-end', () => {
     pushState(engineStatus.mode === 'missing' ? STATE.ENGINE_MISSING : STATE.WAITING);
   });
@@ -261,6 +277,8 @@ function startServices() {
     name: config.name,
     command: config.engineCommand,
     enginePath: config.enginePath,
+    fps: config.videoFps,
+    quality: config.videoQuality,
     resourcesDir: process.resourcesPath,
   });
   engine.on('log', log);
@@ -272,7 +290,15 @@ function startServices() {
     sendEngineStatus();
     pushState(STATE.WAITING);
   });
-  engine.on('client-connected', () => pushState(STATE.PAIRING));
+  engine.on('client-connected', ({ name }) => {
+    if (name) clientName = name;
+    // Handshake in progress; Connected is only pushed on the first real frame.
+    if (currentState !== STATE.CONNECTED) pushState(STATE.PAIRING);
+  });
+  engine.on('client-disconnected', () => {
+    frameCount = 0;
+    pushState(STATE.WAITING);
+  });
   engine.on('resolution', ({ width, height }) => pushState(currentState, { width, height }));
   engine.on('crashed', () => pushState(STATE.ERROR, { reason: 'Mirroring engine stopped unexpectedly' }));
   engine.on('missing', () => {
@@ -315,7 +341,26 @@ function registerIpc() {
     audioEnabled: config.audioEnabled,
     alwaysOnTop: config.alwaysOnTop,
     engineMode: config.engineMode,
+    videoFps: config.videoFps,
+    videoQuality: config.videoQuality,
   }));
+
+  ipcMain.on(IPC.SET_VIDEO, (_e, v) => {
+    const fps = [30, 60].includes(Number(v && v.fps)) ? Number(v.fps) : config.videoFps;
+    const quality = Math.min(95, Math.max(30, Number(v && v.quality) || config.videoQuality));
+    if (fps === config.videoFps && quality === config.videoQuality) return;
+    config.videoFps = fps;
+    config.videoQuality = quality;
+    config.save();
+    log(`video settings: ${fps} fps, JPEG quality ${quality} — restarting engine`);
+    if (engine) {
+      engine.fps = fps;
+      engine.quality = quality;
+      engine.restarts = 0;
+      engine.stop();
+      setTimeout(() => { if (engine) engine.start(); }, 600);
+    }
+  });
 
   ipcMain.on(IPC.SET_NAME, (_e, name) => {
     name = String(name || '').trim().slice(0, 40) || config.name;
@@ -352,6 +397,9 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    // No app menu: also disables Alt popping the Windows menu bar.
+    // (Kept on macOS, where the system menu carries Cmd+Q/copy/paste.)
+    if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
     config = loadConfig();
     registerIpc();
     createWindow();

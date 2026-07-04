@@ -229,11 +229,50 @@ el.settingsClose.addEventListener('click', closeSettings);
 el.scrim.addEventListener('click', closeSettings);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
 
+// Swallow Alt so it never focuses a (removed) menu bar or steals key focus.
+window.addEventListener('keydown', (e) => { if (e.key === 'Alt') e.preventDefault(); });
+window.addEventListener('keyup', (e) => { if (e.key === 'Alt') e.preventDefault(); });
+
 // name (debounced apply)
 let nameTimer = null;
 el.nameInput.addEventListener('input', () => {
   clearTimeout(nameTimer);
   nameTimer = setTimeout(() => api.setName(el.nameInput.value), 400);
+});
+
+// ---- Video settings (FPS / quality segmented controls) ---------------------
+const fpsSeg = document.getElementById('fps-seg');
+const qualitySeg = document.getElementById('quality-seg');
+let selFps = 60;
+let selQuality = 75;
+let videoApplyTimer = null;
+
+function setSegActive(seg, attr, val) {
+  for (const b of seg.querySelectorAll('button')) {
+    b.classList.toggle('active', Number(b.dataset[attr]) === val);
+  }
+}
+
+function queueVideoApply() {
+  // Debounce so picking fps then quality causes one engine restart, not two.
+  clearTimeout(videoApplyTimer);
+  videoApplyTimer = setTimeout(() => api.setVideo({ fps: selFps, quality: selQuality }), 500);
+}
+
+fpsSeg.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  selFps = Number(btn.dataset.fps);
+  setSegActive(fpsSeg, 'fps', selFps);
+  queueVideoApply();
+});
+
+qualitySeg.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  selQuality = Number(btn.dataset.q);
+  setSegActive(qualitySeg, 'q', selQuality);
+  queueVideoApply();
 });
 
 el.audioToggle.addEventListener('change', () => {
@@ -312,6 +351,10 @@ api.onAudio(({ sampleRate, channels, pcm }) => {
     el.audioToggle.checked = cfg.audioEnabled !== false;
     el.aotToggle.checked = !!cfg.alwaysOnTop;
     el.devId.textContent = `device ${cfg.deviceId || '—'}`;
+    selFps = cfg.videoFps || 60;
+    selQuality = cfg.videoQuality || 75;
+    setSegActive(fpsSeg, 'fps', selFps);
+    setSegActive(qualitySeg, 'q', selQuality);
     muted = cfg.audioEnabled === false;
     applyGain();
   } catch (_) { /* main not ready yet; status will follow */ }

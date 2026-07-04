@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('mirrorcast', {
   setName: (name) => ipcRenderer.send(IPC.SET_NAME, name),
   setAudio: (enabled) => ipcRenderer.send(IPC.SET_AUDIO, enabled),
   setAlwaysOnTop: (on) => ipcRenderer.send(IPC.SET_ALWAYS_ON_TOP, on),
+  setVideo: (v) => ipcRenderer.send(IPC.SET_VIDEO, v),
   getConfig: () => ipcRenderer.invoke(IPC.GET_CONFIG),
 });
 
