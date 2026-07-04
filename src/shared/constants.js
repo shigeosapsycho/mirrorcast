@@ -89,6 +89,7 @@ const IPC = {
   SET_AUDIO: 'settings:audio',          // boolean (enabled)
   SET_ALWAYS_ON_TOP: 'settings:always-on-top', // boolean
   SET_VIDEO: 'settings:set-video',      // { fps, quality } — restarts engine
+  SET_THEME: 'settings:set-theme',      // 'dark' | 'light'
   GET_CONFIG: 'settings:get-config',    // invoke -> config snapshot
 
   // engine (external FairPlay receiver) status: main -> renderer

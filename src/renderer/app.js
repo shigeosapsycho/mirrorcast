@@ -239,6 +239,25 @@ el.settingsClose.addEventListener('click', closeSettings);
 el.scrim.addEventListener('click', closeSettings);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
 
+// ---- Theme toggle -----------------------------------------------------------
+const themeBtn = document.getElementById('theme-btn');
+const themeSun = document.getElementById('theme-sun');
+const themeMoon = document.getElementById('theme-moon');
+let theme = 'dark';
+
+function applyTheme(t) {
+  theme = t === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme;
+  // show the icon of the mode a click will switch TO
+  themeSun.classList.toggle('hidden', theme === 'light');
+  themeMoon.classList.toggle('hidden', theme === 'dark');
+}
+
+themeBtn.addEventListener('click', () => {
+  applyTheme(theme === 'dark' ? 'light' : 'dark');
+  api.setTheme(theme);
+});
+
 // Swallow Alt so it never focuses a (removed) menu bar or steals key focus.
 window.addEventListener('keydown', (e) => { if (e.key === 'Alt') e.preventDefault(); });
 window.addEventListener('keyup', (e) => { if (e.key === 'Alt') e.preventDefault(); });
@@ -363,6 +382,7 @@ api.onAudio(({ sampleRate, channels, pcm }) => {
     el.audioToggle.checked = cfg.audioEnabled !== false;
     el.aotToggle.checked = !!cfg.alwaysOnTop;
     el.appVersion.textContent = `MirrorCast v${cfg.version || '1.0.0'}`;
+    applyTheme(cfg.theme || 'dark');
     selFps = cfg.videoFps || 60;
     selQuality = cfg.videoQuality || 75;
     setSegActive(fpsSeg, 'fps', selFps);

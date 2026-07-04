@@ -14,10 +14,31 @@
   --good: #29c467;          /* connected green */
   --good-dim: #16532e;
   --warn: #f0a000;          /* firewall / error amber */
+  --track: #333;            /* slider / switch tracks */
   --radius: 14px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
+
+/* ---------- Light theme ---------- */
+:root[data-theme="light"] {
+  --bg: #f2f2f4;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #e9e9ee;
+  --line: #d9d9df;
+  --text: #1b1b1f;
+  --text-dim: #5f5f6a;
+  --text-faint: #9a9aa4;
+  --track: #c9c9d2;
+}
+:root[data-theme="light"] .stage {
+  background: radial-gradient(120% 80% at 50% -10%, #e9e9ee 0%, var(--bg) 60%);
+}
+:root[data-theme="light"] .gear {
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(0,0,0,0.09);
+}
+:root[data-theme="light"] .gear:hover { background: rgba(255,255,255,0.95); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -72,6 +93,10 @@ html, body {
 }
 .gear:hover { color: var(--text); background: rgba(28,28,28,0.9); opacity: 1; }
 .gear:active { transform: rotate(40deg); }
+
+/* theme toggle mirrors the gear on the left; no rotate on press */
+.theme-btn { left: 10px; right: auto; }
+.theme-btn:active { transform: scale(0.92); }
 
 /* ---------- Stage ---------- */
 .stage {
@@ -147,9 +172,10 @@ html, body {
   70%  { opacity: 0.06; }
   100% { transform: scale(1.5); opacity: 0; }
 }
-.waiting-title { font-size: 16px; font-weight: 600; color: var(--text); }
-.waiting-steps { font-size: 13px; line-height: 1.7; color: var(--text-dim); max-width: 260px; }
-.waiting-steps b { color: var(--text); font-weight: 600; }
+/* Overlays sit on the always-black phone screen — colors pinned, not themed. */
+.waiting-title { font-size: 16px; font-weight: 600; color: #ececec; }
+.waiting-steps { font-size: 13px; line-height: 1.7; color: #8a8a8a; max-width: 260px; }
+.waiting-steps b { color: #ececec; font-weight: 600; }
 #waiting-name { color: var(--accent); }
 
 /* ---------- Engine-setup overlay (informational) ---------- */
@@ -166,8 +192,8 @@ html, body {
   background: radial-gradient(circle at 50% 35%, #1a2b40, #0e1520);
   box-shadow: inset 0 0 0 1px rgba(77,163,255,0.25);
 }
-.engine-title { font-size: 15px; font-weight: 600; color: var(--text); }
-.engine-body { font-size: 12.5px; line-height: 1.6; color: var(--text-dim); max-width: 280px; }
+.engine-title { font-size: 15px; font-weight: 600; color: #ececec; }
+.engine-body { font-size: 12.5px; line-height: 1.6; color: #a0a0a8; max-width: 280px; }
 .engine-cta {
   margin-top: 4px; font-size: 13px; font-weight: 600;
   color: var(--accent); text-decoration: none;
@@ -186,8 +212,8 @@ html, body {
   background: rgba(13,13,13,0.92); backdrop-filter: blur(2px);
 }
 .error-icon { font-size: 34px; }
-.error-title { font-size: 15px; font-weight: 600; }
-.error-body { font-size: 13px; line-height: 1.6; color: var(--text-dim); max-width: 280px; }
+.error-title { font-size: 15px; font-weight: 600; color: #ececec; }
+.error-body { font-size: 13px; line-height: 1.6; color: #a0a0a8; max-width: 280px; }
 
 /* ---------- Status bar ---------- */
 .statusbar {
@@ -245,7 +271,7 @@ html, body {
 .vol-slider {
   -webkit-appearance: none; appearance: none;
   width: 64px; height: 4px; border-radius: 3px;
-  background: #333; cursor: pointer; outline: none;
+  background: var(--track); cursor: pointer; outline: none;
   transition: background .15s var(--ease);
 }
 .vol-slider::-webkit-slider-thumb {
@@ -334,7 +360,7 @@ html, body {
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider {
   position: absolute; inset: 0; cursor: pointer;
-  background: #333; border-radius: 24px;
+  background: var(--track); border-radius: 24px;
   transition: background .22s var(--ease);
 }
 .slider::before {

@@ -72,6 +72,7 @@ function loadConfig() {
   // Video settings. UxPlay defaults to a 30 fps cap; we default to 60.
   if (!stored.videoFps) { stored.videoFps = 60; changed = true; }
   if (!stored.videoQuality) { stored.videoQuality = 75; changed = true; }
+  if (stored.theme !== 'light' && stored.theme !== 'dark') { stored.theme = 'dark'; changed = true; }
 
   // ed25519 identity keypair — persisted as PEM so it stays stable.
   if (!stored.privateKeyPem) {
@@ -107,6 +108,7 @@ function saveConfig(cfg) {
     enginePath: cfg.enginePath,
     videoFps: cfg.videoFps,
     videoQuality: cfg.videoQuality,
+    theme: cfg.theme,
     privateKeyPem: cfg.privateKeyPem,
     publicKeyPem: cfg.publicKeyPem,
   };
@@ -347,7 +349,13 @@ function registerIpc() {
     engineMode: config.engineMode,
     videoFps: config.videoFps,
     videoQuality: config.videoQuality,
+    theme: config.theme,
   }));
+
+  ipcMain.on(IPC.SET_THEME, (_e, theme) => {
+    config.theme = theme === 'light' ? 'light' : 'dark';
+    config.save();
+  });
 
   ipcMain.on(IPC.SET_VIDEO, (_e, v) => {
     const fps = [30, 60].includes(Number(v && v.fps)) ? Number(v.fps) : config.videoFps;
