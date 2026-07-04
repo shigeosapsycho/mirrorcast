@@ -48,15 +48,30 @@ const el = {
 const ctx = el.canvas.getContext('2d', { alpha: false });
 
 // ---- FPS tracking ---------------------------------------------------------
-let frameCount = 0;
-let lastFpsTs = performance.now();
-setInterval(() => {
+// Rolling 2s window over frame ARRIVAL TIMES. A plain per-second bucket reads
+// high when TCP delivers frames in bursts (several JPEGs per chunk): 62 frames
+// can land inside one 980ms bucket and display as "63 fps" even though the
+// true rate is capped. Rate over the window's actual time span is burst-immune.
+const FPS_WINDOW_MS = 2000;
+const frameTimes = [];
+
+function noteFrame() {
   const now = performance.now();
-  const fps = Math.round((frameCount * 1000) / (now - lastFpsTs));
+  frameTimes.push(now);
+  while (frameTimes.length && frameTimes[0] < now - FPS_WINDOW_MS) frameTimes.shift();
+}
+
+setInterval(() => {
+  const cutoff = performance.now() - FPS_WINDOW_MS;
+  while (frameTimes.length && frameTimes[0] < cutoff) frameTimes.shift(); // decay when stream stops
+  const n = frameTimes.length;
+  let fps = 0;
+  if (n >= 2) {
+    const span = frameTimes[n - 1] - frameTimes[0];
+    if (span > 0) fps = Math.round(((n - 1) * 1000) / span);
+  }
   el.sbFps.textContent = `${fps} fps`;
-  frameCount = 0;
-  lastFpsTs = now;
-}, 1000);
+}, 500);
 
 // ---- Video frame rendering ------------------------------------------------
 // Frames arrive as JPEG ArrayBuffers. Decode via createImageBitmap (fast,
@@ -70,7 +85,7 @@ api.onFrame(async (arrayBuffer) => {
     const bmp = await createImageBitmap(blob);
     if (pendingBitmap) pendingBitmap.close();
     pendingBitmap = bmp;
-    frameCount++;
+    noteFrame();
     if (!rafScheduled) {
       rafScheduled = true;
       requestAnimationFrame(paint);
