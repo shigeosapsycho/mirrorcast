@@ -55,33 +55,22 @@ html, body {
 }
 .update-btn:hover { background: rgba(255,255,255,0.28); }
 
-/* ---------- Top bar ---------- */
-.topbar {
-  flex: 0 0 auto;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 14px;
-  -webkit-app-region: drag;            /* draggable window on frameless-ish */
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, #101010, var(--bg));
-}
-.brand { display: flex; align-items: center; gap: 9px; }
-.brand-dot {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-}
-.brand-name { font-size: 14px; font-weight: 600; letter-spacing: 0.2px; }
+/* ---------- Floating settings gear (header removed for mirror room) ---------- */
 .gear {
-  -webkit-app-region: no-drag;
-  background: transparent; border: none; color: var(--text-dim);
-  cursor: pointer; padding: 6px; border-radius: 8px;
+  position: fixed;
+  top: 10px; right: 10px;
+  z-index: 15;                          /* above the stage, below settings panel */
+  background: rgba(21,21,21,0.66);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: var(--text-dim);
+  cursor: pointer; padding: 8px; border-radius: 50%;
   display: grid; place-items: center;
-  transition: color .18s var(--ease), background .18s var(--ease), transform .3s var(--ease);
+  opacity: 0.7;
+  transition: color .18s var(--ease), background .18s var(--ease),
+              opacity .18s var(--ease), transform .3s var(--ease);
 }
-.gear:hover { color: var(--text); background: var(--bg-elev-2); }
+.gear:hover { color: var(--text); background: rgba(28,28,28,0.9); opacity: 1; }
 .gear:active { transform: rotate(40deg); }
 
 /* ---------- Stage ---------- */
@@ -89,7 +78,7 @@ html, body {
   flex: 1 1 auto;
   display: grid;
   place-items: center;
-  padding: 22px;
+  padding: 12px;
   min-height: 0;
   background:
     radial-gradient(120% 80% at 50% -10%, #141414 0%, var(--bg) 60%);
@@ -228,7 +217,6 @@ html, body {
 .sb-state { flex: 0 1 auto; overflow: hidden; }
 #sb-state-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-res, .sb-fps { flex: 0 0 auto; }
-.sb-name { color: var(--text); font-weight: 600; display: block; flex: 0 3 auto; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
 .sb-led {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--text-faint);

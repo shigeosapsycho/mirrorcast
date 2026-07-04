@@ -24,7 +24,6 @@ const el = {
 
   statusbar: document.getElementById('statusbar'),
   sbEngine: document.getElementById('sb-engine'),
-  sbName: document.getElementById('sb-name'),
   sbLed: document.getElementById('sb-led'),
   sbStateText: document.getElementById('sb-state-text'),
   sbRes: document.getElementById('sb-res'),
@@ -121,11 +120,7 @@ const STATE_LABEL = {
 
 api.onStatus((s) => {
   const name = s.deviceName || 'MirrorCast';
-  el.sbName.textContent = name;
-  el.waitingName.textContent = name;
-  if (!document.activeElement || document.activeElement !== el.nameInput) {
-    // don't clobber while user is typing
-  }
+  el.waitingName.textContent = name; // name lives in the waiting overlay only now
 
   const state = s.state || 'waiting';
   el.sbStateText.textContent =
