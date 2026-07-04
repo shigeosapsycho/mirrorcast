@@ -1,18 +1,19 @@
 name: Release
 
-# Tag a version to build installers for Windows + macOS and publish a GitHub
-# Release. electron-updater consumes that release as the auto-update feed.
-#   git tag v0.1.0 && git push origin v0.1.0
+# Build installers for Windows (.exe + .msi) and macOS (.dmg).
+#  - Push a tag  v*      -> build AND publish a GitHub Release (auto-update feed)
+#  - Run manually (Actions tab / gh workflow run) -> build + upload artifacts only
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -29,9 +30,23 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Build & publish installers
+      - name: Build installers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No Apple Developer cert in CI — don't attempt code signing.
+          # No Apple Developer cert — don't attempt macOS code signing.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: npx electron-builder --publish always
+        # Publish only for tag builds; manual runs just produce artifacts.
+        run: npx electron-builder --publish ${{ startsWith(github.ref, 'refs/tags/v') && 'always' || 'never' }}
+
+      - name: Upload installers as run artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mirrorcast-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.msi
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/latest*.yml
