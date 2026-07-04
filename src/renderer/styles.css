@@ -207,13 +207,6 @@ html, body {
 .sb-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
 .sb-sep { color: var(--text-faint); flex: 0 0 auto; }
 /* Text items shrink + ellipsize under pressure; the volume control never does. */
-.sb-engine {
-  color: var(--text-faint); font-variant: tabular-nums;
-  display: block; flex: 0 4 auto; max-width: 96px;   /* shrinks first */
-  overflow: hidden; text-overflow: ellipsis;
-}
-.sb-engine.external { color: var(--good); }
-.sb-engine.missing { color: var(--warn); }
 .sb-state { flex: 0 1 auto; overflow: hidden; }
 #sb-state-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sb-res, .sb-fps { flex: 0 0 auto; }

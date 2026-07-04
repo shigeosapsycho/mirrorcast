@@ -340,6 +340,7 @@ function registerIpc() {
 
   ipcMain.handle(IPC.GET_CONFIG, () => ({
     name: config.name,
+    version: app.getVersion(),
     deviceId: config.deviceId,
     audioEnabled: config.audioEnabled,
     alwaysOnTop: config.alwaysOnTop,

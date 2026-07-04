@@ -23,7 +23,6 @@ const el = {
   engineCta: document.getElementById('engine-cta'),
 
   statusbar: document.getElementById('statusbar'),
-  sbEngine: document.getElementById('sb-engine'),
   sbLed: document.getElementById('sb-led'),
   sbStateText: document.getElementById('sb-state-text'),
   sbRes: document.getElementById('sb-res'),
@@ -36,7 +35,7 @@ const el = {
   nameInput: document.getElementById('name-input'),
   audioToggle: document.getElementById('audio-toggle'),
   aotToggle: document.getElementById('aot-toggle'),
-  devId: document.getElementById('dev-id'),
+  appVersion: document.getElementById('app-version'),
 
   mute: document.getElementById('mute'),
   muteOn: document.getElementById('mute-on'),
@@ -160,15 +159,9 @@ function updateOverlays() {
 }
 
 // ---- Engine status --------------------------------------------------------
+// No statusbar badge — engine problems surface via the engine overlay.
 api.onEngineStatus((st) => {
   engineMode = st.mode;
-  const label = st.mode === 'external' ? (st.engine || 'engine')
-    : st.mode === 'missing' ? 'no engine'
-    : st.mode === 'builtin-demo' ? 'built-in'
-    : '—';
-  el.sbEngine.textContent = '⚙︎ ' + label;
-  el.sbEngine.className = 'sb-item sb-engine ' + (st.mode === 'external' ? 'external' : st.mode === 'missing' ? 'missing' : '');
-  el.sbEngine.title = st.message || 'Mirroring engine';
   if (st.message && st.mode !== 'external') el.engineBody.textContent = st.message;
   updateOverlays();
 });
@@ -369,7 +362,7 @@ api.onAudio(({ sampleRate, channels, pcm }) => {
     el.nameInput.value = cfg.name || '';
     el.audioToggle.checked = cfg.audioEnabled !== false;
     el.aotToggle.checked = !!cfg.alwaysOnTop;
-    el.devId.textContent = `device ${cfg.deviceId || '—'}`;
+    el.appVersion.textContent = `MirrorCast v${cfg.version || '1.0.0'}`;
     selFps = cfg.videoFps || 60;
     selQuality = cfg.videoQuality || 75;
     setSegActive(fpsSeg, 'fps', selFps);
