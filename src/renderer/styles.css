@@ -226,9 +226,9 @@ html, body {
   background: var(--text-faint);
   transition: background .3s var(--ease), box-shadow .3s var(--ease);
 }
-.sb-led.waiting { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: blink 1.6s ease-in-out infinite; }
-.sb-led.connected { background: var(--good); box-shadow: 0 0 8px var(--good); }
-.sb-led.error { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.sb-led.led-waiting { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: blink 1.6s ease-in-out infinite; }
+.sb-led.led-connected { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.sb-led.led-error { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
 .vol {

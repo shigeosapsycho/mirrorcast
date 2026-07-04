@@ -115,7 +115,13 @@ api.onStatus((s) => {
   el.sbStateText.textContent =
     state === 'connected' && s.clientName ? `Connected: ${s.clientName}` : STATE_LABEL[state] || state;
 
-  el.sbLed.className = 'sb-led ' + (state === 'engine-missing' ? 'error' : state);
+  // Namespace the LED state class — bare state names (e.g. "waiting") collide
+  // with overlay classes like .waiting and blow the 8px dot up to an overlay.
+  const ledState = state === 'engine-missing' ? 'error'
+    : state === 'connected' ? 'connected'
+    : state === 'error' ? 'error'
+    : 'waiting';
+  el.sbLed.className = 'sb-led led-' + ledState;
   el.statusbar.classList.toggle('connected', state === 'connected');
 
   if (state === 'error' && s.reason) {
