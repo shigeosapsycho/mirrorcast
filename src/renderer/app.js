@@ -42,6 +42,7 @@ const el = {
   mute: document.getElementById('mute'),
   muteOn: document.getElementById('mute-on'),
   muteOff: document.getElementById('mute-off'),
+  volSlider: document.getElementById('vol-slider'),
 };
 
 const ctx = el.canvas.getContext('2d', { alpha: false });
@@ -236,24 +237,38 @@ el.nameInput.addEventListener('input', () => {
 });
 
 el.audioToggle.addEventListener('change', () => {
-  api.setAudio(el.audioToggle.checked);
-  setMuted(!el.audioToggle.checked);
+  muted = !el.audioToggle.checked;
+  if (!muted && volume === 0) volume = 1;
+  applyGain();
+  api.setAudio(!muted && volume > 0);
 });
 el.aotToggle.addEventListener('change', () => api.setAlwaysOnTop(el.aotToggle.checked));
 
-// ---- Mute button ----------------------------------------------------------
+// ---- Volume + mute --------------------------------------------------------
 let muted = false;
-function setMuted(m) {
-  muted = m;
-  el.mute.classList.toggle('muted', m);
-  el.muteOn.classList.toggle('hidden', m);
-  el.muteOff.classList.toggle('hidden', !m);
-  if (audio) audio.gain.gain.value = m ? 0 : 1;
-  if (el.audioToggle.checked === m) el.audioToggle.checked = !m;
+let volume = 1; // 0..1
+
+function applyGain() {
+  if (audio) audio.gain.gain.value = muted ? 0 : volume;
+  const silent = muted || volume === 0;
+  el.mute.classList.toggle('muted', silent);
+  el.muteOn.classList.toggle('hidden', silent);
+  el.muteOff.classList.toggle('hidden', !silent);
+  el.volSlider.value = String(Math.round((muted ? 0 : volume) * 100));
+  el.audioToggle.checked = !silent; // keep settings master-toggle in sync
 }
+
 el.mute.addEventListener('click', () => {
-  setMuted(!muted);
-  api.setAudio(!muted);
+  muted = !muted;
+  applyGain();
+  api.setAudio(!muted && volume > 0);
+});
+
+el.volSlider.addEventListener('input', () => {
+  volume = Number(el.volSlider.value) / 100;
+  muted = false;
+  applyGain();
+  api.setAudio(volume > 0);
 });
 
 // ---- Web Audio playback ---------------------------------------------------
@@ -264,14 +279,14 @@ function ensureAudio(sampleRate, channels) {
   if (audio) audio.ctx.close();
   const actx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
   const gain = actx.createGain();
-  gain.gain.value = muted ? 0 : 1;
+  gain.gain.value = muted ? 0 : volume;
   gain.connect(actx.destination);
   audio = { ctx: actx, gain, sampleRate, channels, playHead: actx.currentTime };
   return audio;
 }
 
 api.onAudio(({ sampleRate, channels, pcm }) => {
-  if (muted) return;
+  if (muted || volume === 0) return;
   const a = ensureAudio(sampleRate || 44100, channels || 2);
   const i16 = new Int16Array(pcm);
   const frames = i16.length / a.channels;
@@ -297,7 +312,8 @@ api.onAudio(({ sampleRate, channels, pcm }) => {
     el.audioToggle.checked = cfg.audioEnabled !== false;
     el.aotToggle.checked = !!cfg.alwaysOnTop;
     el.devId.textContent = `device ${cfg.deviceId || '—'}`;
-    setMuted(cfg.audioEnabled === false);
+    muted = cfg.audioEnabled === false;
+    applyGain();
   } catch (_) { /* main not ready yet; status will follow */ }
   api.ready();
 })();

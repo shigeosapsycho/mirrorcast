@@ -24,6 +24,13 @@ const MIRROR_DATA_PORT = 7100;
 // the clean contract between the GPL engine (separate process) and the MIT app.
 const MIRROR_INGEST_PORT = 9001;
 
+// Localhost-only raw-PCM audio ingest. The engine's audio sink streams S16LE
+// PCM here so MirrorCast can play it through Web Audio with a volume slider
+// (instead of the engine playing straight to system speakers).
+const MIRROR_AUDIO_PORT = 9002;
+const AUDIO_SAMPLE_RATE = 44100;
+const AUDIO_CHANNELS = 2;
+
 // Bonjour / DNS-SD service types. `_airplay._tcp` is what Control Center →
 // Screen Mirroring scans for. `_raop._tcp` (Remote Audio Output Protocol) is
 // advertised too for broader audio compatibility.
@@ -117,6 +124,9 @@ module.exports = {
   AIRPLAY_PORT,
   MIRROR_DATA_PORT,
   MIRROR_INGEST_PORT,
+  MIRROR_AUDIO_PORT,
+  AUDIO_SAMPLE_RATE,
+  AUDIO_CHANNELS,
   ENGINE_MODE,
   ENGINE_CANDIDATES,
   SERVICE_AIRPLAY,

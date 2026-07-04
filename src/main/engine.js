@@ -31,6 +31,7 @@ const { spawn, spawnSync } = require('child_process');
 const EventEmitter = require('events');
 const {
   MIRROR_INGEST_PORT,
+  MIRROR_AUDIO_PORT,
   ENGINE_CANDIDATES,
 } = require('../shared/constants');
 
@@ -124,6 +125,40 @@ class VideoIngestServer extends EventEmitter {
 }
 
 // ---------------------------------------------------------------------------
+// AudioIngestServer — localhost raw-PCM (S16LE) sink from the engine
+// ---------------------------------------------------------------------------
+
+class AudioIngestServer extends EventEmitter {
+  constructor({ port = MIRROR_AUDIO_PORT } = {}) {
+    super();
+    this.port = port;
+    this.server = null;
+    this.active = null;
+  }
+
+  start() {
+    this.server = net.createServer((socket) => {
+      if (this.active) { try { this.active.destroy(); } catch (_) { /* ignore */ } }
+      this.active = socket;
+      this.emit('log', 'audio producer connected');
+      socket.on('data', (chunk) => this.emit('pcm', chunk));
+      const end = () => { if (this.active === socket) { this.active = null; } };
+      socket.on('close', end);
+      socket.on('error', end);
+    });
+    this.server.on('error', (err) => this.emit('error', err));
+    this.server.listen(this.port, '127.0.0.1', () => {
+      this.emit('log', `audio ingest listening on 127.0.0.1:${this.port}`);
+    });
+  }
+
+  stop() {
+    if (this.active) { try { this.active.destroy(); } catch (_) { /* ignore */ } this.active = null; }
+    if (this.server) { this.server.close(); this.server = null; }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // EngineController — locate + supervise the external receiver
 // ---------------------------------------------------------------------------
 
@@ -145,7 +180,11 @@ function defaultCommand() {
     '{ENGINE}',
     '-n', '{NAME}',
     '-nh',
+    // Video: decoded frames -> MJPEG -> MirrorCast video ingest.
     '-vs', 'jpegenc quality=75 ! tcpclientsink host=127.0.0.1 port={INGEST_PORT}',
+    // Audio: decoded PCM (S16LE) -> MirrorCast audio ingest (so the app's
+    // volume slider controls it, instead of the engine hitting speakers direct).
+    '-as', 'audioconvert ! audioresample ! audio/x-raw,format=S16LE,channels=2,rate=44100 ! queue ! tcpclientsink host=127.0.0.1 port={AUDIO_PORT}',
   ];
 }
 
@@ -170,12 +209,13 @@ class EngineController extends EventEmitter {
    * @param {number} o.ingestPort
    * @param {string} o.resourcesDir where a bundled engine may live
    */
-  constructor({ name, command = null, enginePath = null, ingestPort = MIRROR_INGEST_PORT, resourcesDir, dllDir = null }) {
+  constructor({ name, command = null, enginePath = null, ingestPort = MIRROR_INGEST_PORT, audioPort = MIRROR_AUDIO_PORT, resourcesDir, dllDir = null }) {
     super();
     this.name = name;
     this.command = command;
     this.enginePath = enginePath;
     this.ingestPort = ingestPort;
+    this.audioPort = audioPort;
     this.resourcesDir = resourcesDir;
     this.dllDir = dllDir; // extra dir to prepend to PATH (GStreamer runtime)
     this.proc = null;
@@ -221,7 +261,8 @@ class EngineController extends EventEmitter {
     const template = this.command && this.command.length ? this.command : defaultCommand();
     const fill = (t) => t
       .replace('{NAME}', this.name)
-      .replace('{INGEST_PORT}', String(this.ingestPort));
+      .replace('{INGEST_PORT}', String(this.ingestPort))
+      .replace('{AUDIO_PORT}', String(this.audioPort));
 
     // Resolve the executable (template[0]). '{ENGINE}' → auto-detect via
     // locate(); otherwise treat it as a literal binary name or path.
@@ -349,4 +390,4 @@ function lineReader(stream, onLine) {
   });
 }
 
-module.exports = { VideoIngestServer, EngineController, defaultCommand, which };
+module.exports = { VideoIngestServer, AudioIngestServer, EngineController, defaultCommand, which };

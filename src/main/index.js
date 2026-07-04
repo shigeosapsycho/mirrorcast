@@ -19,9 +19,9 @@ const crypto = require('crypto');
 const { MdnsAdvertiser } = require('./mdns');
 const { AirPlayReceiver } = require('./airplay');
 const { Decoder } = require('./decoder');
-const { VideoIngestServer, EngineController } = require('./engine');
+const { VideoIngestServer, AudioIngestServer, EngineController } = require('./engine');
 const { initUpdater } = require('./updater');
-const { IPC, STATE, ENGINE_MODE } = require('../shared/constants');
+const { IPC, STATE, ENGINE_MODE, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS } = require('../shared/constants');
 
 const isDev = process.argv.includes('--dev');
 
@@ -31,6 +31,7 @@ let mdns = null;
 let airplay = null;
 let decoder = null;
 let ingest = null;
+let audioIngest = null;
 let engine = null;
 let updater = null;
 let lastUpdateStatus = { state: 'idle' };
@@ -202,13 +203,42 @@ function startServices() {
   decoder = new Decoder({ fps: 60 });
   decoder.on('log', log);
   decoder.on('error', (e) => log(`decoder error: ${e.message}`));
-  decoder.on('frame', (jpeg) => {
-    send(IPC.VIDEO_FRAME, jpeg.buffer.slice(jpeg.byteOffset, jpeg.byteOffset + jpeg.byteLength));
-  });
 
   ingest = new VideoIngestServer({ decoder });
   ingest.on('log', log);
   ingest.on('error', (e) => log(`ingest error: ${e.message}`));
+  // Ingest emits unified JPEG frames for BOTH paths: MJPEG passthrough (what
+  // UxPlay sends) and H.264 decoded via ffmpeg. Forward them to the renderer.
+  let frameCount = 0;
+  ingest.on('frame', (jpeg) => {
+    if (++frameCount === 1 || frameCount % 120 === 0) log(`video frames received: ${frameCount}`);
+    send(IPC.VIDEO_FRAME, jpeg.buffer.slice(jpeg.byteOffset, jpeg.byteOffset + jpeg.byteLength));
+  });
+  ingest.on('stream-start', () => { frameCount = 0; });
+
+  // Audio: engine streams raw PCM here; forward to the renderer's Web Audio,
+  // where the volume slider applies gain. Only forward when audio is enabled.
+  audioIngest = new AudioIngestServer({});
+  audioIngest.on('log', log);
+  audioIngest.on('error', (e) => log(`audio ingest error: ${e.message}`));
+  // Frame-align (S16 * channels bytes) across TCP chunk boundaries so the
+  // renderer's Int16Array never gets an odd length and channels stay in sync.
+  const FRAME_BYTES = AUDIO_CHANNELS * 2;
+  let pcmLeftover = Buffer.alloc(0);
+  audioIngest.on('pcm', (chunk) => {
+    if (!config.audioEnabled) { pcmLeftover = Buffer.alloc(0); return; }
+    const buf = Buffer.concat([pcmLeftover, chunk]);
+    const usable = buf.length - (buf.length % FRAME_BYTES);
+    pcmLeftover = buf.subarray(usable);
+    if (usable === 0) return;
+    const aligned = Buffer.from(buf.subarray(0, usable)); // copy -> own ArrayBuffer
+    send(IPC.AUDIO_PCM, {
+      sampleRate: AUDIO_SAMPLE_RATE,
+      channels: AUDIO_CHANNELS,
+      pcm: aligned.buffer.slice(aligned.byteOffset, aligned.byteOffset + aligned.byteLength),
+    });
+  });
+  audioIngest.start();
   ingest.on('stream-start', () => pushState(STATE.CONNECTED, { clientName: 'iPhone' }));
   ingest.on('stream-end', () => {
     pushState(engineStatus.mode === 'missing' ? STATE.ENGINE_MISSING : STATE.WAITING);
@@ -259,10 +289,11 @@ function startServices() {
 function stopServices() {
   if (engine) engine.stop();
   if (ingest) ingest.stop();
+  if (audioIngest) audioIngest.stop();
   if (mdns) mdns.stop();
   if (airplay) airplay.stop();
   if (decoder) decoder.stop();
-  engine = ingest = mdns = airplay = decoder = null;
+  engine = ingest = audioIngest = mdns = airplay = decoder = null;
 }
 
 // ---------------------------------------------------------------------------

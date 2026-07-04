@@ -231,9 +231,12 @@ html, body {
 .sb-led.error { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
-.mute {
+.vol {
   margin-left: auto;
+  display: flex; align-items: center; gap: 7px;
   -webkit-app-region: no-drag;
+}
+.mute {
   background: transparent; border: none; color: var(--text-dim);
   cursor: pointer; padding: 5px; border-radius: 7px;
   display: grid; place-items: center;
@@ -241,6 +244,22 @@ html, body {
 }
 .mute:hover { color: var(--text); background: var(--bg-elev-2); }
 .mute.muted { color: var(--warn); }
+
+.vol-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 76px; height: 4px; border-radius: 3px;
+  background: #333; cursor: pointer; outline: none;
+  transition: background .15s var(--ease);
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--accent); border: none;
+  box-shadow: 0 0 6px rgba(77,163,255,0.5);
+  transition: transform .12s var(--ease);
+}
+.vol-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.statusbar.connected .vol-slider::-webkit-slider-thumb { background: var(--good); box-shadow: 0 0 6px rgba(41,196,103,0.5); }
 
 /* ---------- Settings slide-in ---------- */
 .scrim {
