@@ -66,6 +66,7 @@ class RecordingSink {
     this.stream = null;
     this.rawPath = null;
     this.container = null; // 'mp4' | 'webm-h264' | 'webm-vp9'
+    this.writeError = null;
   }
 
   get active() {
@@ -79,7 +80,11 @@ class RecordingSink {
     this.container = container;
     const ext = container === 'mp4' ? 'mp4' : 'webm';
     this.rawPath = uniquePath(dir, `MirrorCast_${stamp()}`, ext);
+    this.writeError = null;
     this.stream = fs.createWriteStream(this.rawPath);
+    // Without a listener a write error (disk full, folder deleted) is an
+    // uncaught exception that takes down the main process mid-recording.
+    this.stream.on('error', (e) => { this.writeError = e; });
     return this.rawPath;
   }
 
@@ -91,12 +96,23 @@ class RecordingSink {
     if (!this.stream) return { error: 'not recording' };
     const stream = this.stream;
     this.stream = null;
-    await new Promise((resolve) => stream.end(resolve));
+    await new Promise((resolve) => {
+      // An errored stream never emits 'finish', so end()'s callback would
+      // hang this promise (and the renderer awaiting recStop) forever.
+      if (this.writeError || stream.destroyed) return resolve();
+      stream.on('error', resolve);
+      stream.end(resolve);
+    });
     const raw = this.rawPath;
     const container = this.container;
     this.rawPath = null;
     this.container = null;
 
+    if (this.writeError) {
+      const msg = this.writeError.message;
+      this.writeError = null;
+      return { error: `could not write recording: ${msg}` };
+    }
     if (container !== 'webm-h264') return { path: raw };
     const mp4 = uniquePath(path.dirname(raw), path.basename(raw, '.webm'), 'mp4');
     if (!(await remuxToMp4(raw, mp4))) return { path: raw }; // keep the webm
