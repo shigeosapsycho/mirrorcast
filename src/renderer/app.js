@@ -513,11 +513,13 @@ async function startRecording() {
   if (!fmt) { showToast('Recording is not supported on this system'); return; }
 
   const stream = el.canvas.captureStream(); // frames captured as they paint
-  if (audio) {
-    recAudioTap = audio.ctx.createMediaStreamDestination();
-    audio.gain.connect(recAudioTap); // post-volume mix, same as the speakers
-    for (const t of recAudioTap.stream.getAudioTracks()) stream.addTrack(t);
-  }
+  // Pre-create the audio pipeline: MediaRecorder snapshots its tracks at
+  // construction, so audio that starts after recording began would otherwise
+  // be lost forever. An idle context records silence until PCM flows in.
+  const a = ensureAudio(44100, 2);
+  recAudioTap = a.ctx.createMediaStreamDestination();
+  a.gain.connect(recAudioTap); // post-volume mix, same as the speakers
+  for (const t of recAudioTap.stream.getAudioTracks()) stream.addTrack(t);
 
   const res = await api.recStart({ container: fmt.container });
   if (res && res.error) {

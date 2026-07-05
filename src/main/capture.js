@@ -29,11 +29,19 @@ function stamp() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
 
+/** First non-existing <dir>/<base>[-N].<ext> — stamp() is 1s-granular, so
+ *  rapid captures in the same second must not overwrite each other. */
+function uniquePath(dir, base, ext) {
+  let p = path.join(dir, `${base}.${ext}`);
+  for (let i = 2; fs.existsSync(p); i++) p = path.join(dir, `${base}-${i}.${ext}`);
+  return p;
+}
+
 /** Write a PNG buffer to <picturesDir>/MirrorCast; returns the file path. */
 async function saveScreenshot(picturesDir, pngBuffer) {
   const dir = path.join(picturesDir, 'MirrorCast');
   await fs.promises.mkdir(dir, { recursive: true });
-  const file = path.join(dir, `MirrorCast_${stamp()}.png`);
+  const file = uniquePath(dir, `MirrorCast_${stamp()}`, 'png');
   await fs.promises.writeFile(file, pngBuffer);
   return file;
 }
@@ -70,7 +78,7 @@ class RecordingSink {
     await fs.promises.mkdir(dir, { recursive: true });
     this.container = container;
     const ext = container === 'mp4' ? 'mp4' : 'webm';
-    this.rawPath = path.join(dir, `MirrorCast_${stamp()}.${ext}`);
+    this.rawPath = uniquePath(dir, `MirrorCast_${stamp()}`, ext);
     this.stream = fs.createWriteStream(this.rawPath);
     return this.rawPath;
   }
@@ -90,7 +98,7 @@ class RecordingSink {
     this.container = null;
 
     if (container !== 'webm-h264') return { path: raw };
-    const mp4 = raw.replace(/\.webm$/i, '.mp4');
+    const mp4 = uniquePath(path.dirname(raw), path.basename(raw, '.webm'), 'mp4');
     if (!(await remuxToMp4(raw, mp4))) return { path: raw }; // keep the webm
     await fs.promises.unlink(raw).catch(() => { /* mp4 exists; webm is extra */ });
     return { path: mp4 };

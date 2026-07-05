@@ -1,6 +1,6 @@
 {
   "name": "mirrorcast",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Free AirPlay 2 screen-mirroring receiver for Windows and macOS. Your iPhone sees it in Control Center automatically.",
   "main": "src/main/index.js",
   "author": "MirrorCast",

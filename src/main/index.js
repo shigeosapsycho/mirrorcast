@@ -40,6 +40,7 @@ let currentState = STATE.STARTING;
 let engineStatus = { mode: null, installed: false, engine: null, message: '' };
 let lastPin = null;                      // current engine pairing PIN (or null)
 const recording = new RecordingSink();   // MediaRecorder chunks -> Videos/MirrorCast
+const revealablePaths = new Set();       // files we saved; only these may be revealed
 
 // ---------------------------------------------------------------------------
 // Persistent config (identity + user settings)
@@ -452,6 +453,7 @@ function registerIpc() {
   ipcMain.handle(IPC.SCREENSHOT_SAVE, async (_e, png) => {
     try {
       const file = await saveScreenshot(app.getPath('pictures'), Buffer.from(png));
+      revealablePaths.add(file);
       log(`screenshot saved: ${file}`);
       return { path: file };
     } catch (e) {
@@ -460,9 +462,10 @@ function registerIpc() {
   });
 
   ipcMain.on(IPC.SHOW_IN_FOLDER, (_e, p) => {
-    // Only reveal paths we handed out (a plain existence check keeps the
-    // renderer from probing arbitrary strings into the shell).
-    if (typeof p === 'string' && fs.existsSync(p)) shell.showItemInFolder(p);
+    // Reveal only files this process saved — never arbitrary renderer paths.
+    if (typeof p === 'string' && revealablePaths.has(p) && fs.existsSync(p)) {
+      shell.showItemInFolder(p);
+    }
   });
 
   ipcMain.handle(IPC.RECORDING_START, async (_e, opts) => {
@@ -483,7 +486,10 @@ function registerIpc() {
   ipcMain.handle(IPC.RECORDING_STOP, async () => {
     try {
       const res = await recording.stop();
-      if (res.path) log(`recording saved: ${res.path}`);
+      if (res.path) {
+        revealablePaths.add(res.path);
+        log(`recording saved: ${res.path}`);
+      }
       return res;
     } catch (e) {
       return { error: e.message };
