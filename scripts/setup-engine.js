@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * setup-engine.js — detect an installed FairPlay engine and print guidance.
+ * setup-engine.js - detect an installed FairPlay engine and print guidance.
  * Never downloads anything; just checks PATH and tells you how to install +
  * how to wire the engine into MirrorCast's ingest.
  *
@@ -12,7 +12,7 @@ const { which } = require('../src/main/engine');
 const { ENGINE_CANDIDATES, MIRROR_INGEST_PORT } = require('../src/shared/constants');
 
 const plat = process.platform;
-console.log('MirrorCast — engine check\n');
+console.log('MirrorCast - engine check\n');
 
 let found = null;
 for (const cand of ENGINE_CANDIDATES) {

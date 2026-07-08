@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * app.js — renderer UI logic. Talks to main only through window.mirrorcast
+ * app.js - renderer UI logic. Talks to main only through window.mirrorcast
  * (see preload.js). Draws decoded JPEG frames to a canvas, tracks FPS, drives
  * the status bar + settings panel + Web Audio playback.
  */
@@ -133,7 +133,7 @@ api.onStatus((s) => {
   el.sbStateText.textContent =
     state === 'connected' && s.clientName ? `Connected: ${s.clientName}` : STATE_LABEL[state] || state;
 
-  // Namespace the LED state class — bare state names (e.g. "waiting") collide
+  // Namespace the LED state class - bare state names (e.g. "waiting") collide
   // with overlay classes like .waiting and blow the 8px dot up to an overlay.
   const ledState = state === 'engine-missing' ? 'error'
     : state === 'connected' ? 'connected'
@@ -148,8 +148,8 @@ api.onStatus((s) => {
   }
   if (state !== 'connected' && state !== 'pairing') {
     el.frame.classList.remove('streaming'); // clear stale mirror view
-    el.sbRes.textContent = '—';
-    stopRecording(); // stream is gone — finalize the file
+    el.sbRes.textContent = '-';
+    stopRecording(); // stream is gone - finalize the file
   }
   lastState = state;
   updateOverlays();
@@ -172,7 +172,7 @@ function updateOverlays() {
 }
 
 // ---- Engine status --------------------------------------------------------
-// No statusbar badge — engine problems surface via the engine overlay.
+// No statusbar badge - engine problems surface via the engine overlay.
 api.onEngineStatus((st) => {
   engineMode = st.mode;
   if (st.message && st.mode !== 'external') el.engineBody.textContent = st.message;
@@ -188,12 +188,12 @@ api.onFirewallBlocked(({ port, code }) => {
     `Allow <b>MirrorCast</b> through Windows Defender Firewall on <b>Private</b> networks, then restart the app.`;
 });
 
-// Engine install helper — expand inline, per-OS commands (no network needed).
+// Engine install helper - expand inline, per-OS commands (no network needed).
 el.engineCta.addEventListener('click', (e) => {
   e.preventDefault();
   const isMac = /Mac/i.test(navigator.platform) || /Mac OS X/i.test(navigator.userAgent);
   const steps = isMac
-    ? 'macOS:  brew install uxplay\nThen restart MirrorCast — it auto-detects UxPlay on PATH.'
+    ? 'macOS:  brew install uxplay\nThen restart MirrorCast - it auto-detects UxPlay on PATH.'
     : 'Windows:  install UxPlay via MSYS2 (see README ▸ "Install an engine"),\nor set a custom engine command in the config file. Then restart MirrorCast.';
   el.engineBody.style.whiteSpace = 'pre-line';
   el.engineBody.textContent = steps;
@@ -295,7 +295,7 @@ function updateBtnProximity(mx, my) {
   }
 }
 
-// Timestamp throttle — NOT requestAnimationFrame: rAF pauses in occluded
+// Timestamp throttle - NOT requestAnimationFrame: rAF pauses in occluded
 // windows, which would latch the throttle shut and kill proximity forever.
 window.addEventListener('mousemove', (e) => {
   const now = performance.now();
@@ -471,7 +471,7 @@ async function takeScreenshot() {
     if (!blob) throw new Error('canvas capture failed');
     const res = await api.saveScreenshot(await blob.arrayBuffer());
     if (res && res.path) {
-      showToast('Screenshot saved — click to open folder', () => api.showInFolder(res.path));
+      showToast('Screenshot saved - click to open folder', () => api.showInFolder(res.path));
     } else {
       throw new Error((res && res.error) || 'save failed');
     }
@@ -569,7 +569,7 @@ async function finishRecording() {
   await recChain; // every chunk is in main's write stream before we finalize
   const res = await api.recStop();
   if (res && res.path) {
-    showToast('Recording saved — click to open folder', () => api.showInFolder(res.path));
+    showToast('Recording saved - click to open folder', () => api.showInFolder(res.path));
   } else if (res && res.error && res.error !== 'not recording') {
     showToast(`Recording failed: ${res.error}`);
   }

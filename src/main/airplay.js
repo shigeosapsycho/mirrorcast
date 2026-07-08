@@ -1,14 +1,14 @@
 'use strict';
 
 /**
- * airplay.js — AirPlay 2 receiver control server.
+ * airplay.js - AirPlay 2 receiver control server.
  *
  * Listens on AIRPLAY_PORT (7000) and speaks the HTTP/1.1 + RTSP hybrid that
  * iOS uses. Handles: /info, pair-setup, pair-verify, /fp-setup (FairPlay),
  * and the RTSP verbs ANNOUNCE / SETUP / RECORD / SET_PARAMETER / TEARDOWN.
  *
  * ----------------------------------------------------------------------------
- * IMPORTANT — the FairPlay boundary
+ * IMPORTANT - the FairPlay boundary
  * ----------------------------------------------------------------------------
  * Modern iOS mirroring is gated by Apple **FairPlay** (`POST /fp-setup`, a
  * 2-phase challenge/response) plus AES encryption of the H.264 stream keyed by
@@ -257,8 +257,8 @@ class AirPlayReceiver extends EventEmitter {
   _record(session, msg) {
     this._reply(session, msg, 200, { 'Audio-Latency': '11025', Session: '1' });
     // NOTE: encrypted H.264 now flows on the mirroring data channel. Without
-    // the FairPlay stream key it cannot be decoded — see _fpSetup().
-    this.emit('log', 'RECORD — stream starting (awaiting FairPlay key to decode)');
+    // the FairPlay stream key it cannot be decoded - see _fpSetup().
+    this.emit('log', 'RECORD - stream starting (awaiting FairPlay key to decode)');
   }
 
   // --- HTTP endpoints ----------------------------------------------------
@@ -354,13 +354,13 @@ class AirPlayReceiver extends EventEmitter {
     this.emit('fairplay-required', { session });
 
     // We reply with a plausibly-shaped buffer so the socket doesn't hard-fail,
-    // but this is NOT a valid FairPlay response — decode will not succeed.
+    // but this is NOT a valid FairPlay response - decode will not succeed.
     // Plug a real engine into decryptStreamKey() to make mirroring work.
     const phase = body.length >= 5 ? body[4] : 1;
     let reply;
     if (body.length === 16) {
       // phase 1: iOS expects a 142-byte reply keyed off body[14].
-      reply = Buffer.alloc(142); // placeholder — real bytes come from FairPlay
+      reply = Buffer.alloc(142); // placeholder - real bytes come from FairPlay
     } else {
       // phase 2: iOS expects a 32-byte reply.
       reply = Buffer.alloc(32);
@@ -417,7 +417,7 @@ class AirPlayReceiver extends EventEmitter {
 }
 
 // ---------------------------------------------------------------------------
-// key helpers — convert between raw 32-byte keys and DER/SPKI for Node crypto
+// key helpers - convert between raw 32-byte keys and DER/SPKI for Node crypto
 // ---------------------------------------------------------------------------
 
 // SPKI prefix for an ed25519 public key (RFC 8410).

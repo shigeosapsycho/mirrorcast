@@ -1,13 +1,13 @@
 'use strict';
 
 /**
- * stream-test.js — pump a synthetic H.264 test pattern into MirrorCast's video
+ * stream-test.js - pump a synthetic H.264 test pattern into MirrorCast's video
  * ingest (127.0.0.1:9001) using the bundled ffmpeg.
  *
  * Two uses:
  *   npm run stream-test            → stream to a RUNNING MirrorCast app; you
  *                                    should see the test pattern in the window.
- *                                    (Proves your display path works — no
+ *                                    (Proves your display path works - no
  *                                    iPhone or FairPlay engine needed.)
  *   node scripts/stream-test.js --selftest
  *                                  → boots an in-process ingest + ffmpeg
@@ -97,7 +97,7 @@ if (!selftest) {
         decoder.stop();
         console.log(`\nffmpeg exit ${code}; decoded ${frames} JPEG frame(s), first frame ${firstDims} bytes`);
         const ok = frames > 10;
-        console.log(ok ? 'SELFTEST PASS — ingest → ffmpeg → frames works' : 'SELFTEST FAIL — no frames');
+        console.log(ok ? 'SELFTEST PASS - ingest → ffmpeg → frames works' : 'SELFTEST FAIL - no frames');
         process.exit(ok ? 0 : 1);
       }, 500);
     });

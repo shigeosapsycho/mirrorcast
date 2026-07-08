@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * updater.js — auto-updates via electron-updater against GitHub Releases.
+ * updater.js - auto-updates via electron-updater against GitHub Releases.
  *
  * Publishing is configured in electron-builder.yml (provider: github). At
  * runtime the packaged app reads app-update.yml and polls the Releases feed.

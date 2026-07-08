@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * index.js — Electron main process.
+ * index.js - Electron main process.
  *
  * Responsibilities:
  *  - create/persist stable identity (deviceid MAC + ed25519 keypair + name)
@@ -79,7 +79,7 @@ function loadConfig() {
   if (!stored.videoQuality) { stored.videoQuality = 75; changed = true; }
   if (stored.theme !== 'light' && stored.theme !== 'dark') { stored.theme = 'dark'; changed = true; }
 
-  // ed25519 identity keypair — persisted as PEM so it stays stable.
+  // ed25519 identity keypair - persisted as PEM so it stays stable.
   if (!stored.privateKeyPem) {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
     stored.privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -216,7 +216,7 @@ function startBuiltinDiscovery() {
 }
 
 function startServices() {
-  // Decoder + localhost H.264 ingest are always on — this is where the mirror
+  // Decoder + localhost H.264 ingest are always on - this is where the mirror
   // actually appears in the app canvas, fed by the external engine.
   decoder = new Decoder({ fps: 60 });
   decoder.on('log', log);
@@ -229,7 +229,7 @@ function startServices() {
   // UxPlay sends) and H.264 decoded via ffmpeg. Forward them to the renderer.
   //
   // IMPORTANT: the ingest producer socket is UxPlay's tcpclientsink, which
-  // connects at ENGINE launch — not when an iPhone connects. So "producer
+  // connects at ENGINE launch - not when an iPhone connects. So "producer
   // connected" must NOT drive the Connected state (it caused a false
   // "Connected" at idle). Connected = first real video frame; Connecting =
   // engine log reports a client; Waiting = client gone.
@@ -238,7 +238,7 @@ function startServices() {
   ingest.on('frame', (jpeg) => {
     frameCount++;
     if (frameCount === 1) {
-      log(`first video frame from ${clientName} — Connected`);
+      log(`first video frame from ${clientName} - Connected`);
       pushState(STATE.CONNECTED, { clientName });
     } else if (frameCount % 300 === 0) {
       log(`video frames received: ${frameCount}`);
@@ -257,7 +257,7 @@ function startServices() {
   const FRAME_BYTES = AUDIO_CHANNELS * 2;
   let pcmLeftover = Buffer.alloc(0);
   // A stale partial frame from a previous producer would misalign every
-  // sample after it (permanent static) — reset on each new audio stream.
+  // sample after it (permanent static) - reset on each new audio stream.
   audioIngest.on('stream-start', () => { pcmLeftover = Buffer.alloc(0); });
   audioIngest.on('pcm', (chunk) => {
     if (!config.audioEnabled) { pcmLeftover = Buffer.alloc(0); return; }
@@ -282,14 +282,14 @@ function startServices() {
 
   if (mode === ENGINE_MODE.BUILTIN) {
     engineStatus = { mode: 'builtin-demo', installed: false, engine: null,
-      message: 'Built-in mode: discovery + handshake only — no video decode.' };
+      message: 'Built-in mode: discovery + handshake only - no video decode.' };
     startBuiltinDiscovery();
     sendEngineStatus();
     pushState(STATE.WAITING);
     return;
   }
 
-  // auto / external — drive a real FairPlay engine.
+  // auto / external - drive a real FairPlay engine.
   engine = new EngineController({
     name: config.name,
     command: config.engineCommand,
@@ -325,7 +325,7 @@ function startServices() {
   engine.on('crashed', () => pushState(STATE.ERROR, { reason: 'Mirroring engine stopped unexpectedly' }));
   engine.on('missing', () => {
     engineStatus = { mode: 'missing', installed: false, engine: null,
-      message: 'No FairPlay engine found. Install UxPlay to mirror video — see README ▸ "Install an engine". The iPhone can still discover MirrorCast.' };
+      message: 'No FairPlay engine found. Install UxPlay to mirror video - see README ▸ "Install an engine". The iPhone can still discover MirrorCast.' };
     sendEngineStatus();
     startBuiltinDiscovery();          // still let the phone see us
     pushState(STATE.ENGINE_MISSING);
@@ -394,7 +394,7 @@ function registerIpc() {
     config.videoFps = fps;
     config.videoQuality = quality;
     config.save();
-    log(`video settings: ${fps} fps, JPEG quality ${quality} — restarting engine`);
+    log(`video settings: ${fps} fps, JPEG quality ${quality} - restarting engine`);
     if (engine) {
       engine.fps = fps;
       engine.quality = quality;
@@ -408,7 +408,7 @@ function registerIpc() {
     config.name = name;
     config.save();
     if (mdns) mdns.rename(name);
-    // The engine advertises its own mDNS name (-n) — restart it so the new
+    // The engine advertises its own mDNS name (-n) - restart it so the new
     // name actually shows up on the iPhone.
     if (engine) engine.name = name;
     restartEngine();
@@ -433,7 +433,7 @@ function registerIpc() {
     if (on === config.requirePin) return;
     config.requirePin = on;
     config.save();
-    log(`client PIN ${on ? 'required' : 'not required'} — restarting engine`);
+    log(`client PIN ${on ? 'required' : 'not required'} - restarting engine`);
     if (engine) {
       engine.requirePin = on;
       restartEngine(); // engine emits 'pin' with the new code (or null) on start
@@ -462,7 +462,7 @@ function registerIpc() {
   });
 
   ipcMain.on(IPC.SHOW_IN_FOLDER, (_e, p) => {
-    // Reveal only files this process saved — never arbitrary renderer paths.
+    // Reveal only files this process saved - never arbitrary renderer paths.
     if (typeof p === 'string' && revealablePaths.has(p) && fs.existsSync(p)) {
       shell.showItemInFolder(p);
     }
@@ -501,7 +501,7 @@ function registerIpc() {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-// Single instance — two receivers would fight over port 7000.
+// Single instance - two receivers would fight over port 7000.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -531,7 +531,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('window-all-closed', () => {
-    // macOS: app stays alive with the window closed — keep services running
+    // macOS: app stays alive with the window closed - keep services running
     // so the receiver still works and `activate` gets a live app back.
     if (process.platform !== 'darwin') {
       stopServices();

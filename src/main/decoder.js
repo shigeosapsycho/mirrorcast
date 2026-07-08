@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * decoder.js — H.264 decode pipeline via a bundled ffmpeg (ffmpeg-static).
+ * decoder.js - H.264 decode pipeline via a bundled ffmpeg (ffmpeg-static).
  *
  * Design: iOS mirroring delivers an Annex-B H.264 elementary stream. We feed
  * NAL units to ffmpeg's stdin and read back a stream of JPEG frames on stdout,
@@ -49,7 +49,7 @@ class Decoder extends EventEmitter {
   start() {
     if (this.running) return;
     if (!ffmpegPath) {
-      this.emit('error', new Error('ffmpeg-static not found — run `npm install`'));
+      this.emit('error', new Error('ffmpeg-static not found - run `npm install`'));
       return;
     }
 

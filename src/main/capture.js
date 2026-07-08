@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * capture.js — save screenshots and recordings to the user's media folders.
+ * capture.js - save screenshots and recordings to the user's media folders.
  *
  * Screenshots: the renderer sends the canvas as a PNG ArrayBuffer; we write it
  * to Pictures/MirrorCast.
@@ -9,7 +9,7 @@
  * Recordings: the renderer runs MediaRecorder over the canvas (+ Web Audio
  * tap) and streams container chunks over IPC; we append them to a file in
  * Videos/MirrorCast. When the renderer recorded H.264-in-WebM we remux to .mp4
- * afterwards with the bundled ffmpeg (stream copy — cheap, no re-encode).
+ * afterwards with the bundled ffmpeg (stream copy - cheap, no re-encode).
  */
 
 const fs = require('fs');
@@ -29,7 +29,7 @@ function stamp() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
 
-/** First non-existing <dir>/<base>[-N].<ext> — stamp() is 1s-granular, so
+/** First non-existing <dir>/<base>[-N].<ext> - stamp() is 1s-granular, so
  *  rapid captures in the same second must not overwrite each other. */
 function uniquePath(dir, base, ext) {
   let p = path.join(dir, `${base}.${ext}`);

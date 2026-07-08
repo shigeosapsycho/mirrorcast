@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * engine.js — bridge to a real FairPlay-capable AirPlay receiver engine.
+ * engine.js - bridge to a real FairPlay-capable AirPlay receiver engine.
  *
  * Why this exists:
  *   Apple FairPlay (the crypto that gates the mirror stream) is only available
- *   in reverse-engineered GPL projects — UxPlay / RPiPlay. Reimplementing it in
+ *   in reverse-engineered GPL projects - UxPlay / RPiPlay. Reimplementing it in
  *   Node is not viable. Instead MirrorCast drives such an engine as a SEPARATE
  *   PROCESS and consumes its decrypted H.264 over a localhost socket. Running
  *   the GPL engine as an independent process (mere aggregation) keeps
@@ -37,7 +37,7 @@ const {
 } = require('../shared/constants');
 
 // ---------------------------------------------------------------------------
-// VideoIngestServer — localhost H.264 sink → decoder
+// VideoIngestServer - localhost H.264 sink → decoder
 // ---------------------------------------------------------------------------
 
 const JPEG_SOI = Buffer.from([0xff, 0xd8]);
@@ -62,7 +62,7 @@ class VideoIngestServer extends EventEmitter {
   start() {
     this.server = net.createServer((socket) => this._onProducer(socket));
     this.server.on('error', (err) => this.emit('error', err));
-    // Bind to loopback ONLY — never accept video from the network.
+    // Bind to loopback ONLY - never accept video from the network.
     this.server.listen(this.port, '127.0.0.1', () => {
       this.emit('log', `video ingest listening on 127.0.0.1:${this.port}`);
     });
@@ -77,7 +77,7 @@ class VideoIngestServer extends EventEmitter {
     this.emit('log', `ingest producer connected (${socket.remoteAddress})`);
     this.emit('stream-start');
 
-    let mode = null;      // 'h264' | 'mjpeg' — sniffed from first bytes
+    let mode = null;      // 'h264' | 'mjpeg' - sniffed from first bytes
     let jbuf = Buffer.alloc(0);
 
     socket.on('data', (chunk) => {
@@ -126,7 +126,7 @@ class VideoIngestServer extends EventEmitter {
 }
 
 // ---------------------------------------------------------------------------
-// AudioIngestServer — localhost raw-PCM (S16LE) sink from the engine
+// AudioIngestServer - localhost raw-PCM (S16LE) sink from the engine
 // ---------------------------------------------------------------------------
 
 class AudioIngestServer extends EventEmitter {
@@ -161,7 +161,7 @@ class AudioIngestServer extends EventEmitter {
 }
 
 // ---------------------------------------------------------------------------
-// EngineController — locate + supervise the external receiver
+// EngineController - locate + supervise the external receiver
 // ---------------------------------------------------------------------------
 
 /**
@@ -177,7 +177,7 @@ function defaultCommand() {
   // UxPlay decodes via GStreamer, then this videosink re-encodes the raw frames
   // to MJPEG and streams them to MirrorCast's ingest, which auto-detects JPEG
   // and paints them to the canvas. MJPEG keeps the sink to stock elements
-  // (jpegenc/multipartmux/tcpclientsink) — no UxPlay patch needed.
+  // (jpegenc/multipartmux/tcpclientsink) - no UxPlay patch needed.
   return [
     '{ENGINE}',
     '-n', '{NAME}',
@@ -344,7 +344,7 @@ class EngineController extends EventEmitter {
     // "connection request from iPhone (iPhone18,2) with deviceID = ..."
     const req = line.match(/connection request from (\S+)/i);
     if (req) {
-      this.restarts = 0; // healthy session — reset the crash-loop budget
+      this.restarts = 0; // healthy session - reset the crash-loop budget
       this.emit('client-connected', { name: req[1], raw: line });
     } else if (/accepted.*client|client connected|start(ing)? mirroring/.test(l)) {
       this.emit('client-connected', { raw: line });

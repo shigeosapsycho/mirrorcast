@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * preload.js — secure bridge between the sandboxed renderer and main.
+ * preload.js - secure bridge between the sandboxed renderer and main.
  * Exposes a tiny, explicit API on window.mirrorcast; no raw ipcRenderer.
  */
 

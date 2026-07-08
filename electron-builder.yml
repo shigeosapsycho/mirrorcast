@@ -2,7 +2,7 @@ appId: com.mirrorcast.app
 productName: MirrorCast
 copyright: Copyright © 2026 MirrorCast
 
-# Auto-update feed — electron-updater reads this from the packaged app.
+# Auto-update feed - electron-updater reads this from the packaged app.
 publish:
   provider: github
   owner: shigeosapsycho

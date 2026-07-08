@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * mdns.js — Bonjour/DNS-SD advertisement using the pure-JS `multicast-dns`.
+ * mdns.js - Bonjour/DNS-SD advertisement using the pure-JS `multicast-dns`.
  *
  * This is the piece that makes an iPhone show "MirrorCast" under
  * Control Center → Screen Mirroring. No Apple Bonjour SDK required, so it
@@ -26,7 +26,7 @@ const {
   STATUS_FLAGS,
 } = require('../shared/constants');
 
-const TTL = 120; // seconds — standard for DNS-SD records
+const TTL = 120; // seconds - standard for DNS-SD records
 const ANNOUNCE_INTERVAL_MS = 30 * 1000;
 
 /**

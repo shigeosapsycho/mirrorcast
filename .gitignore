@@ -18,7 +18,7 @@ npm-debug.log*
 .env
 .env.local
 
-# Bundled engine binaries — never commit (see resources/engine/README.md)
+# Bundled engine binaries - never commit (see resources/engine/README.md)
 resources/engine/*
 !resources/engine/README.md
 

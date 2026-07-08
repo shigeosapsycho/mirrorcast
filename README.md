@@ -1,7 +1,7 @@
 # MirrorCast 📱→🖥️
 
 **Free, open AirPlay 2 screen-mirroring receiver for Windows and macOS.**
-Your iPhone sees it automatically in **Control Center → Screen Mirroring** — no USB
+Your iPhone sees it automatically in **Control Center → Screen Mirroring** - no USB
 cable, no custom iOS app, no typing IP addresses.
 
 MirrorCast advertises itself on your Wi-Fi with Bonjour/mDNS (pure JavaScript, no
@@ -9,11 +9,11 @@ Apple SDK), so it appears in the native iOS mirroring list just like an Apple TV
 
 ---
 
-## How it works — and what you need
+## How it works - and what you need
 
 Apple gates the mirror stream behind **FairPlay** (a proprietary handshake at
 `POST /fp-setup` + AES encryption of the H.264 stream). FairPlay is *not* in
-Node's `crypto` and can't be done with `net`/`crypto` alone — it exists only in
+Node's `crypto` and can't be done with `net`/`crypto` alone - it exists only in
 reverse-engineered **GPL** projects ([UxPlay](https://github.com/FDH2/UxPlay),
 [RPiPlay](https://github.com/FD-/RPiPlay)).
 
@@ -29,21 +29,21 @@ iPhone ──▶ UxPlay/RPiPlay (FairPlay decrypt) ──H.264──▶ 127.0.0.
 ```
 
 Running the GPL engine as an independent process (mere aggregation, no linking)
-keeps MirrorCast itself **MIT** — we don't bundle or link its code.
+keeps MirrorCast itself **MIT** - we don't bundle or link its code.
 
 | Stage | Status |
 |-------|--------|
 | Appears in iOS Control Center → Screen Mirroring | ✅ Works |
 | iPhone connects & runs RTSP/HTTP + pairing handshake (built-in) | ✅ Works |
-| **Video decode + display path** (H.264 → ffmpeg → canvas) | ✅ **Works — verified** |
+| **Video decode + display path** (H.264 → ffmpeg → canvas) | ✅ **Works - verified** |
 | Live iPhone mirror on screen | ✅ Works **with an engine installed** (below) |
 | Audio playback plumbing | ✅ Ready (Web Audio) |
 | Dark UI, settings, status bar | ✅ Works |
 
 **Prove the display path in 10 seconds, no iPhone and no engine needed:**
 ```bash
-npm start            # terminal 1 — launch MirrorCast
-npm run stream-test  # terminal 2 — pipes a test pattern into the app window
+npm start            # terminal 1 - launch MirrorCast
+npm run stream-test  # terminal 2 - pipes a test pattern into the app window
 ```
 You should see a moving test pattern fill the phone frame. That confirms
 everything downstream of the engine works; installing an engine simply replaces
@@ -58,7 +58,7 @@ the test pattern with your real iPhone screen.
 - **iOS 12 or newer**
 - Windows 10/11 or macOS 11+
 
-`ffmpeg` is bundled automatically via `ffmpeg-static` — no manual install.
+`ffmpeg` is bundled automatically via `ffmpeg-static` - no manual install.
 
 ---
 
@@ -68,9 +68,9 @@ the test pattern with your real iPhone screen.
 Download for your platform from the
 [Releases page](https://github.com/shigeosapsycho/mirrorcast/releases):
 
-- **Windows** — `MirrorCast-Setup-x.y.z.exe` (NSIS installer, **auto-updates**)
+- **Windows** - `MirrorCast-Setup-x.y.z.exe` (NSIS installer, **auto-updates**)
   or `MirrorCast-x.y.z.msi` (enterprise/silent install; no auto-update)
-- **macOS** — `MirrorCast-x.y.z.dmg` (unsigned — see Gatekeeper note below)
+- **macOS** - `MirrorCast-x.y.z.dmg` (unsigned - see Gatekeeper note below)
 
 #### macOS: opening an unsigned build 🍎
 These builds are **not code-signed** (no Apple Developer certificate), so macOS
@@ -119,11 +119,11 @@ The status bar turns 🟢 **green** when your iPhone connects.
 
 Open the gear (top-right) to slide in settings:
 
-- **Receiver name** — what shows on your iPhone's mirroring list (defaults to your
+- **Receiver name** - what shows on your iPhone's mirroring list (defaults to your
   computer's hostname). Changes apply live.
-- **Audio** — play mirrored audio through this computer's default output.
-- **Always on top** — keep the MirrorCast window above other apps.
-- **Require PIN code** — iPhones must enter a 4-digit code (shown in the
+- **Audio** - play mirrored audio through this computer's default output.
+- **Always on top** - keep the MirrorCast window above other apps.
+- **Require PIN code** - iPhones must enter a 4-digit code (shown in the
   MirrorCast window) before they can mirror. A fresh code is generated each
   time the receiver starts.
 
@@ -133,12 +133,12 @@ Mute is also one tap away in the status bar.
 
 While a device is mirroring:
 
-- **Screenshot** — camera button in the status bar, or **Ctrl+S** (⌘S on Mac).
+- **Screenshot** - camera button in the status bar, or **Ctrl+S** (⌘S on Mac).
   Saved as PNG to `Pictures/MirrorCast`.
-- **Screen recording** — record button in the status bar starts/stops; a timer
+- **Screen recording** - record button in the status bar starts/stops; a timer
   shows while recording. Saved as `.mp4` (with the mirrored audio) to
   `Videos/MirrorCast`. Recording stops automatically if the stream ends.
-- **Fullscreen** — double-click the mirror or press **F11**; **Esc** exits.
+- **Fullscreen** - double-click the mirror or press **F11**; **Esc** exits.
   The status bar slides in when you move the mouse.
 
 ---
@@ -151,7 +151,7 @@ While a device is mirroring:
 - Many routers block **mDNS/Bonjour** between wireless clients ("AP isolation" /
   "client isolation"). Turn that off.
 - On **Windows**, approve the firewall prompt (see below).
-- Restart MirrorCast — it re-announces on launch.
+- Restart MirrorCast - it re-announces on launch.
 
 ### Windows Firewall
 The first launch, Windows Defender Firewall will prompt to allow MirrorCast to
@@ -170,7 +170,7 @@ for mDNS.
 You likely have **no engine installed**, so nothing is decrypting the FairPlay
 stream. Run `npm run engine:check`, install UxPlay, and confirm it streams H.264
 to `127.0.0.1:9001` (see **Wiring an engine**). Sanity-check the display path
-itself with `npm run stream-test` — if the test pattern appears, the only
+itself with `npm run stream-test` - if the test pattern appears, the only
 missing piece is the engine.
 
 ### No audio
@@ -199,7 +199,7 @@ GStreamer runtime). With MSYS2 installed, one command builds it:
 ```bash
 MSYSTEM=MINGW64 C:/msys64/usr/bin/bash.exe -lc "bash scripts/build-uxplay-windows.sh"
 ```
-This produces `~/uxplay-build/build/uxplay.exe`. **MirrorCast auto-detects it** —
+This produces `~/uxplay-build/build/uxplay.exe`. **MirrorCast auto-detects it** -
 `EngineController.locate()` scans `C:\msys64\home\*\uxplay-build\build` and
 injects `C:\msys64\mingw64\bin` into `PATH` for the GStreamer DLLs at launch. No
 config needed; just build it and run `npm start`. (Or set `enginePath` to any
@@ -222,7 +222,7 @@ uxplay -n "MirrorCast" -nh \
 ```
 
 MirrorCast can also **launch the engine for you**. Edit the config file
-(`mirrorcast.config.json` in your userData dir — the path is shown in
+(`mirrorcast.config.json` in your userData dir - the path is shown in
 `engine:check` output on some platforms; on Windows it's
 `%APPDATA%/MirrorCast/`):
 
@@ -242,7 +242,7 @@ MirrorCast can also **launch the engine for you**. Edit the config file
 - `engineMode: "builtin"` → discovery + handshake only, never spawn an engine.
 - Leave `engineCommand: null` to use the built-in default template.
 
-Self-contained builds: drop a binary in `resources/engine/` before packaging —
+Self-contained builds: drop a binary in `resources/engine/` before packaging -
 see [`resources/engine/README.md`](resources/engine/README.md) (note the GPL
 implications of redistributing the engine).
 
@@ -266,29 +266,29 @@ implications of redistributing the engine).
                           SEE MirrorCast; video needs an engine.
 ```
 
-- `src/main/engine.js` — H.264 ingest server (`127.0.0.1:9001`) + external-engine
+- `src/main/engine.js` - H.264 ingest server (`127.0.0.1:9001`) + external-engine
   supervisor (locate, spawn, parse logs, restart).
-- `src/main/decoder.js` — bundled ffmpeg; H.264 → JPEG frames over IPC.
-- `src/main/mdns.js` — pure-JS Bonjour advertisement (built-in mode).
-- `src/main/airplay.js` — pure-JS AirPlay control server + pairing (built-in mode).
-- `src/renderer/*` — dark, minimal UI; draws frames to a `<canvas>`.
-- `scripts/stream-test.js` — synthetic H.264 → ingest (verify display path).
-- `scripts/setup-engine.js` — detect/guide engine install.
+- `src/main/decoder.js` - bundled ffmpeg; H.264 → JPEG frames over IPC.
+- `src/main/mdns.js` - pure-JS Bonjour advertisement (built-in mode).
+- `src/main/airplay.js` - pure-JS AirPlay control server + pairing (built-in mode).
+- `src/renderer/*` - dark, minimal UI; draws frames to a `<canvas>`.
+- `scripts/stream-test.js` - synthetic H.264 → ingest (verify display path).
+- `scripts/setup-engine.js` - detect/guide engine install.
 
 ---
 
 ## Releases & auto-update
 
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) — every push/PR
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) - every push/PR
   runs the syntax check + headless video-pipeline selftest.
-- **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) —
+- **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) -
   push a tag and GitHub Actions builds Windows + macOS installers and publishes a
   GitHub Release:
   ```bash
   npm version patch          # bumps package.json + tags
   git push --follow-tags
   ```
-- **Auto-update** — the packaged app checks the GitHub Releases feed on launch
+- **Auto-update** - the packaged app checks the GitHub Releases feed on launch
   (via `electron-updater`, configured in `electron-builder.yml` → `publish`).
   When a newer version is published, a banner offers **Restart & update**.
 

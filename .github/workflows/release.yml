@@ -33,7 +33,7 @@ jobs:
       - name: Build installers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No Apple Developer cert — don't attempt macOS code signing.
+          # No Apple Developer cert - don't attempt macOS code signing.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         # Publish only for tag builds; manual runs just produce artifacts.
         run: npx electron-builder --publish ${{ startsWith(github.ref, 'refs/tags/v') && 'always' || 'never' }}

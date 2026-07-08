@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * generate-icon.js — renders assets/icon.png with zero dependencies.
+ * generate-icon.js - renders assets/icon.png with zero dependencies.
  *
  * Draws a dark rounded-square app tile with a portrait phone outline and an
  * upward "cast" mark, using signed-distance fields evaluated with 4x
@@ -63,7 +63,7 @@ function sample(u, v) {
   const sp = sdfRoundRect(u, v, phone.cx, phone.cy, phone.hw, phone.hh, phone.r);
   if (Math.abs(sp) < phone.sw / 2) out = [...ACCENT, 255];
 
-  // 3) cast mark — dot + upward arcs
+  // 3) cast mark - dot + upward arcs
   const dx = u - cast.cx;
   const dy = v - cast.cy;
   const dist = Math.hypot(dx, dy);

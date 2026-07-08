@@ -56,7 +56,7 @@ const MODEL = 'MacBookPro18,3';
  * supports legacy pairing, has-unified-supported-encryption-types.
  */
 const FEATURES_LO = 0x5a7ffff7;
-const FEATURES_HI = 0x000000 ^ 0x1e; // 0x1E — SupportsUnifiedPairSetupAndMFi etc.
+const FEATURES_HI = 0x000000 ^ 0x1e; // 0x1E - SupportsUnifiedPairSetupAndMFi etc.
 const FEATURES = `0x${FEATURES_LO.toString(16).toUpperCase()},0x${FEATURES_HI.toString(16).toUpperCase()}`;
 
 // status flags TXT record. 0x4 == device configured / ready.
@@ -78,7 +78,7 @@ const IPHONE_ASPECT_H = 19.5;
 const IPC = {
   // main -> renderer
   STATUS_UPDATE: 'status:update',   // { state, deviceName, width, height, fps }
-  VIDEO_FRAME: 'video:frame',       // ArrayBuffer (JPEG) — one decoded frame
+  VIDEO_FRAME: 'video:frame',       // ArrayBuffer (JPEG) - one decoded frame
   AUDIO_PCM: 'audio:pcm',           // { sampleRate, channels, pcm:ArrayBuffer }
   LOG: 'log',                       // { level, msg }
   FIREWALL_BLOCKED: 'firewall:blocked', // { port }
@@ -88,7 +88,7 @@ const IPC = {
   SET_NAME: 'settings:set-name',        // string
   SET_AUDIO: 'settings:audio',          // boolean (enabled)
   SET_ALWAYS_ON_TOP: 'settings:always-on-top', // boolean
-  SET_VIDEO: 'settings:set-video',      // { fps, quality } — restarts engine
+  SET_VIDEO: 'settings:set-video',      // { fps, quality } - restarts engine
   SET_THEME: 'settings:set-theme',      // 'dark' | 'light'
   GET_CONFIG: 'settings:get-config',    // invoke -> config snapshot
 
@@ -111,7 +111,7 @@ const IPC = {
   FULLSCREEN_CHANGED: 'window:fullscreen',  // main -> renderer (bool)
 
   // client-access PIN (engine pairing gate)
-  SET_REQUIRE_PIN: 'settings:require-pin',  // renderer -> main (bool) — restarts engine
+  SET_REQUIRE_PIN: 'settings:require-pin',  // renderer -> main (bool) - restarts engine
   PIN_CODE: 'engine:pin',                   // main -> renderer { pin: string | null }
 };
 
@@ -126,8 +126,8 @@ const STATE = {
 };
 
 // How MirrorCast obtains a decoded stream.
-//   external — an installed FairPlay engine (UxPlay/RPiPlay) does the crypto
-//   builtin  — pure-JS discovery + handshake only (no decode; demo/dev)
+//   external - an installed FairPlay engine (UxPlay/RPiPlay) does the crypto
+//   builtin  - pure-JS discovery + handshake only (no decode; demo/dev)
 const ENGINE_MODE = {
   AUTO: 'auto',
   EXTERNAL: 'external',
